@@ -94,7 +94,7 @@ n = 100
 r = 3
 m = 10
 
-n_its = 20
+n_its = 5
 
 data = []
 #sample from uniform distribution

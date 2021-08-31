@@ -79,7 +79,6 @@ def flag_mean_iteration(data, Y0, weight, fast = False, eps = .0000001):
     k = Y0.shape[1]
     aX = []
     al = []
-    converge_data_point = False
 
     ii=0
 
@@ -101,10 +100,7 @@ def flag_mean_iteration(data, Y0, weight, fast = False, eps = .0000001):
         aX.append(al[-1]*x)
         ii+= 1
 
-    if converge_data_point:
-        Y = data[converge_data_point_idx] 
-    else:
-        Y = flag_mean(aX, k, fast)
+    Y = flag_mean(aX, k, fast)
 
     return Y
 
