@@ -40,7 +40,7 @@ def convergence_check(gr_list, n_its):
 
     for i in range(10): 
 
-        irls_sin_median.append(ca.irls_flag(gr_list, k, n_its, 'sine', fast = False, init = Y)[1])
+        irls_sin_median.append(ca.irls_flag(gr_list, k, n_its, 'sine', opt_err = 'sine', fast = False, init = Y)[1])
         gd_sin_median.append(ca.gradient_descent(gr_list, k, -.01, n_its, 'sine', init = Y)[1])
         print('Sine Median finished')
 
@@ -48,7 +48,7 @@ def convergence_check(gr_list, n_its):
         # gd_geodesic_median.append(ca.gradient_descent(gr_list, k, .01, n_its, 'geodesic', init = Y)[1])
         # print('Geodesic finished')
 
-        irls_max_cosine.append(ca.irls_flag(gr_list, k, n_its, 'cosine', fast = False, init = Y)[1])
+        irls_max_cosine.append(ca.irls_flag(gr_list, k, n_its, 'cosine', opt_err = 'cosine', fast = False, init = Y)[1])
         gd_max_cosine.append(ca.gradient_descent(gr_list, k, -.01, n_its, 'cosine', init = Y)[1])
         print('Max Cos finished')
 

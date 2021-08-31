@@ -104,7 +104,7 @@ def flag_mean_iteration(data, Y0, weight, fast = False, eps = .0000001):
 
     return Y
 
-def irls_flag(data, k, n_its, sin_cos, fast = False, init = 'random', seed = 0): 
+def irls_flag(data, k, n_its, sin_cos, opt_err = 'geodesic', fast = False, init = 'random', seed = 0): 
     err = []
     n = data[0].shape[0]
 
@@ -118,12 +118,12 @@ def irls_flag(data, k, n_its, sin_cos, fast = False, init = 'random', seed = 0):
     else:
         Y = init
 
-    err.append(calc_error_1_2(data, Y, 'geodesic'))
+    err.append(calc_error_1_2(data, Y, opt_err))
 
     #flag mean iteration function
     for _ in range(n_its):
         Y = flag_mean_iteration(data, Y, sin_cos, fast)
-        err.append(calc_error_1_2(data, Y, 'geodesic'))
+        err.append(calc_error_1_2(data, Y, opt_err))
 
     return Y, err
 
