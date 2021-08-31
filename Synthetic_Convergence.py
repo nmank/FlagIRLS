@@ -68,6 +68,7 @@ def convergence_check(gr_list, n_its):
 
     add_line(irls_sin_median, LINESTYLES[0], MARKERS[0], 'IRLS', 'g')
     add_line(gd_sin_median, LINESTYLES[1], MARKERS[1], 'Gradient Descent', 'b')
+    plt.xticks([0,1,2,3,4,5])
     plt.legend()
     plt.xlabel('Iteration')
     plt.ylabel('Objective function value')
@@ -82,6 +83,7 @@ def convergence_check(gr_list, n_its):
 
     add_line(irls_max_cosine, LINESTYLES[0], MARKERS[0], 'IRLS', 'g')
     add_line(gd_max_cosine, LINESTYLES[1], MARKERS[1], 'Gradient Descent', 'b')
+    plt.xticks([0,1,2,3,4,5])
     plt.legend()
     plt.xlabel('Iteration')
     plt.ylabel('Objective function value')
