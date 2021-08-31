@@ -25,14 +25,21 @@ def calc_error_1_2(data, Y, sin_cos):
             if sin_sq < 0:
                 sin_sq = 0
             err += np.sqrt(sin_sq)
+    elif sin_cos == 'sinesq':
+        for x in data:
+            r = np.min([k,x.shape[1]])
+            sin_sq = r - np.trace(Y.T @ x @ x.T @ Y)
+            if sin_sq < 0:
+                sin_sq = 0
+            err += sin_sq
     elif sin_cos == 'geodesic':
         for x in data:
             cos = np.sqrt(Y.T @ x @ x.T @ Y)[0][0]
             if cos > 1:
-                print(cos)
+#                 print(cos)
                 cos= 1
             elif cos < 0:
-                print(cos)
+#                 print(cos)
                 cos = 0
             err += np.arccos(cos)
     return err
@@ -67,7 +74,8 @@ def flag_mean(data, k, fast = False):
         mean = np.linalg.svd(X)[0][:,:k]
     return mean
 
-def flag_mean_iteration(data, Y0, weight, fast = False):
+#change eps to .0000001 to reproduce figures in paper
+def flag_mean_iteration(data, Y0, weight, fast = False, eps = .0000001):
     k = Y0.shape[1]
     aX = []
     al = []
@@ -77,40 +85,30 @@ def flag_mean_iteration(data, Y0, weight, fast = False):
 
     for x in data:
         if weight == 'cosine':
-            al.append(np.trace(Y0.T @ x @ x.T @ Y0)**(-1/4))
+            cossq = np.trace(Y0.T @ x @ x.T @ Y0)
+            al.append((cossq+eps)**(-1/4))
         elif weight == 'sine':
             r = np.min([k,x.shape[1]])
-            sin_sq = r - np.trace(Y0.T @ x @ x.T @ Y0)
-            if sin_sq < .0000000001:
-                converge_data_point = True
-                converge_data_point_idx = ii
-                al.append(1)
-                break
-            else:
-                al.append(sin_sq**(-1/4))
+            sinsq = r - np.trace(Y0.T @ x @ x.T @ Y0)
+            al.append((sinsq+eps)**(-1/4))
         elif weight == 'geodesic':
             r = np.min([k,x.shape[1]])
-            sin_sq = 1 - Y0.T @ x @ x.T @ Y0
-            if sin_sq < .0000000001:
-                converge_data_point = True
-                converge_data_point_idx = ii
-                al.append(1)
-                break
-            else:
-                al.append(((sin_sq)**(-1/4))*((Y0.T @ x @ x.T @ Y0)**(-1/4)))
+            sinsq = 1 - Y0.T @ x @ x.T @ Y0
+            cossq = Y0.T @ x @ x.T @ Y0
+            al.append((sinsq*cossq + eps)**(-1/4))
         else:
             print('sin_cos must be geodesic, sine or cosine')
         aX.append(al[-1]*x)
         ii+= 1
 
     if converge_data_point:
-        Y0 = data[converge_data_point_idx] 
+        Y = data[converge_data_point_idx] 
     else:
-        Y0 = flag_mean(aX, k, fast)
+        Y = flag_mean(aX, k, fast)
 
-    return Y0
+    return Y
 
-def irls_flag(data, k, n_its, sin_cos, fast = False, init = 'random'): 
+def irls_flag(data, k, n_its, sin_cos, fast = False, init = 'random', seed = 0): 
     err = []
     n = data[0].shape[0]
 
@@ -118,17 +116,18 @@ def irls_flag(data, k, n_its, sin_cos, fast = False, init = 'random'):
     #initialize
     if init == 'random':
         #randomly
+        np.random.seed(seed)
         Y_raw = np.random.rand(n,k)
         Y = np.linalg.qr(Y_raw)[0][:,:k]
     else:
         Y = init
 
-    err.append(calc_error_1_2(data, Y, sin_cos))
+    err.append(calc_error_1_2(data, Y, 'geodesic'))
 
     #flag mean iteration function
     for _ in range(n_its):
         Y = flag_mean_iteration(data, Y, sin_cos, fast)
-        err.append(calc_error_1_2(data, Y, sin_cos))
+        err.append(calc_error_1_2(data, Y, 'geodesic'))
 
     return Y, err
 
