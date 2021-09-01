@@ -113,7 +113,7 @@ def irls_flag(data, k, n_its, sin_cos, opt_err = 'geodesic', fast = False, init 
     if init == 'random':
         #randomly
         np.random.seed(seed)
-        Y_raw = np.random.rand(n,k)
+        Y_raw = np.random.rand(n,k)-.5
         Y = np.linalg.qr(Y_raw)[0][:,:k]
     else:
         Y = init
