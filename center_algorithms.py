@@ -16,7 +16,6 @@ def calc_error_1_2(data, Y, sin_cos):
     err = 0
     if sin_cos == 'cosine':
         for x in data:
-            r = np.min([k,x.shape[1]])
             err += np.sqrt(np.trace(Y.T @ x @ x.T @ Y))
     elif sin_cos == 'sine':
         for x in data:
@@ -34,14 +33,14 @@ def calc_error_1_2(data, Y, sin_cos):
             err += sin_sq
     elif sin_cos == 'geodesic':
         for x in data:
-            cos = np.sqrt(Y.T @ x @ x.T @ Y)[0][0]
+            cos = (Y.T @ x @ x.T @ Y)[0][0]
             if cos > 1:
 #                 print(cos)
                 cos= 1
             elif cos < 0:
 #                 print(cos)
                 cos = 0
-            err += np.arccos(cos)
+            err += np.arccos(np.sqrt(cos))
     return err
 
 
@@ -66,7 +65,6 @@ def flag_mean(data, k, fast = False):
                 V[:,j] = V[:,j]/np.linalg.norm(V[:,j])
                 new_U =  X @ V[:,[j]] / (V[:,j] @ V[:,[j]])
                 err1.append(np.linalg.norm(old_U - new_U)**2)
-                print(err1[-1])
                 mean[:,[j]] = new_U[:]
             err.append(err1[1:])
         
