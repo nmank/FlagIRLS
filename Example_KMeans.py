@@ -24,7 +24,7 @@ n_itrs = 20
 
 #finish this and run by tomorrow morning.
 cluster_purities = pd.DataFrame(columns = ['Algorithm','NumberClusters','ClusterPurity'])
-for k in range(5,60,5):
+for k in range(5,30,5):
     print('.')
     print('.')
     print('.')
@@ -36,17 +36,17 @@ for k in range(5,60,5):
         print("Flag trial"+str(exp+1)+" finished")
         print('.')
 
-        # centers = km.kmeans(gr_list, k, n_itrs, 'sine')
-        # cluster_purity = km.clusterPurity(labels_true, gr_list, centers, 'sine')
-        # cluster_purities = cluster_purities.append({'Algorithm':'Sine Median','NumberClusters':k,'ClusterPurity':cluster_purity},ignore_index = True)
-        # print("Sine trial"+str(exp+1)+" finished")
-        # print('.')
+        centers = km.kmeans(gr_list, k, n_itrs, 'sine')
+        cluster_purity = km.clusterPurity(labels_true, gr_list, centers, 'sine')
+        cluster_purities = cluster_purities.append({'Algorithm':'Sine Median','NumberClusters':k,'ClusterPurity':cluster_purity},ignore_index = True)
+        print("Sine trial"+str(exp+1)+" finished")
+        print('.')
 
-        # centers = km.kmeans(gr_list, k, n_itrs, 'cosine')
-        # cluster_purity = km.clusterPurity(labels_true, gr_list, centers, 'cosine')
-        # cluster_purities = cluster_purities.append({'Algorithm':'Maximum Cosine','NumberClusters':k,'ClusterPurity':cluster_purity}, ignore_index = True)
-        # print("Cosine trial"+str(exp+1)+" finished")
-        # print('.')
+        centers = km.kmeans(gr_list, k, n_itrs, 'cosine')
+        cluster_purity = km.clusterPurity(labels_true, gr_list, centers, 'cosine')
+        cluster_purities = cluster_purities.append({'Algorithm':'Maximum Cosine','NumberClusters':k,'ClusterPurity':cluster_purity}, ignore_index = True)
+        print("Cosine trial"+str(exp+1)+" finished")
+        print('.')
 
     print('Experiment '+str(k)+' finished.')
 
@@ -61,7 +61,7 @@ for k in range(5,60,5):
 # ax.set_xlabel("Number of Clusters")
 # plt.savefig('k_means_violins.png')
 
-cluster_purities.to_csv(index = False)
+cluster_purities.to_csv('k_meeans_data.csv', index = False)
 
 sns.boxplot(x='NumberClusters', y='ClusterPurity', hue='Algorithm', data = cluster_purities)
 

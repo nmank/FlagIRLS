@@ -30,17 +30,21 @@ def getLabels(dataSet, centroids, med):
 	for d in dataSet:
 		dists = []
 		for c in centroids:
-			# if med == 'flag':
-			# 	dists.append(r-np.trace(d.T @ c @ c.T @ d))
-			# elif med == 'sine' or med == 'cosine':
-			# 	sin_sq = r - np.trace(d.T @ c @ c.T @ d)
-			# 	if sin_sq < 0:
-			# 		sin_sq = 0
-			# 	dists.append(np.sqrt(sin_sq))
-			s_vals = np.linalg.svd(d.T @ c)[1][:r]
-			if (s_vals < 0).any or (s_vals > 1).any:
-				s_vals = 0
-			dists.append(np.sqrt(np.sum(np.arccos(s_vals)**2)))
+			if med == 'flag':
+				dists.append(r-np.trace(d.T @ c @ c.T @ d))
+			elif med == 'sine' or med == 'cosine':
+				sin_sq = r - np.trace(d.T @ c @ c.T @ d)
+				if sin_sq < 0:
+					sin_sq = 0
+				dists.append(np.sqrt(sin_sq))
+			# s_vals = np.linalg.svd(d.T @ c)[1][:r]
+			# if (s_vals < 0).any:
+			# 	idx = np.where(s_vals < 0)
+			# 	s_vals[idx] = 0
+			# if (s_vals > 1).any:
+			# 	idx = np.where(s_vals > 1)
+			# 	s_vals[idx] = 1
+			# dists.append(np.sqrt(np.sum(np.arccos(s_vals)**2)))
 		idx = np.argmin(dists)
 		labels.append(idx)
 	return labels
@@ -55,6 +59,7 @@ def getCentroids(dataSet, labels, centroids, med):
 	# that centroid's label) you should randomly re-initialize it.
 	[n,r] = dataSet[0].shape
 
+	new_centroids = []
 	for ii in range(len(centroids)):
 		idx = np.where(np.array(labels) == ii)[0]
 		# if idx.size == 0:
@@ -62,25 +67,25 @@ def getCentroids(dataSet, labels, centroids, med):
 		if len(idx) != 0:
 			X = [dataSet[i] for i in idx]
 			if med == 'flag':
-				centroids[ii] = ca.flag_mean(X, r, fast = False)
+				new_centroids.append(ca.flag_mean(X, r, fast = False))
 			elif med == 'sine':
-				centroids[ii] = ca.irls_flag(X, r, 5, 'sine')[0]
+				new_centroids.append(ca.irls_flag(X, r, 5, 'sine')[0])
 			elif med == 'cosine':
-				centroids[ii] = ca.irls_flag(X, r, 5, 'cosine')[0]	    
+				new_centroids.append(ca.irls_flag(X, r, 5, 'cosine')[0])	    
 
-	return centroids
+	return new_centroids
 
 
 # Function: Get Random Centroids
 # -------------
 # Returns k random centroids, each of dimension n.
 def getRandomCentroids(k,n,r,dataSet):
-	idx =  np.random.randint(0,len(dataSet),k)
-	centroids = [dataSet[i] for i in idx]
+	# idx =  np.random.randint(0,len(dataSet),k)
+	# centroids = [dataSet[i] for i in idx]
 
-	# centroids = []
-	# for i in range(k):
-	# 	centroids.append(np.linalg.qr(np.random.rand(n,r))[0][:,:r])
+	centroids = []
+	for i in range(k):
+		centroids.append(np.linalg.qr(np.random.rand(n,r)-.5)[0][:,:r])
 	return centroids
 
 
@@ -123,7 +128,7 @@ def kmeans(dataSet, k, max_itrs, med):
 	# Run the main k-means algorithm
 	while not shouldStop(oldCentroids, centroids, iterations, max_itrs):
 		# Save old centroids for convergence test. Book keeping.
-		oldCentroids = centroids[:]
+		oldCentroids = centroids.copy()
 		iterations += 1
 
 		# Assign labels to each datapoint based on centroids
@@ -131,6 +136,8 @@ def kmeans(dataSet, k, max_itrs, med):
 
 		# Assign centroids based on datapoint labels
 		centroids = getCentroids(dataSet, labels, centroids, med)
+	
+	# print(iterations)
 	    
 	# We can get the labels too by calling getLabels(dataSet, centroids)
 	return centroids
