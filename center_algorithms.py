@@ -33,6 +33,7 @@ Outputs:
     err - objective function value
 '''
 def calc_error_1_2(data, Y, sin_cos):
+    k = Y.shape[1]
     err = 0
     if sin_cos == 'cosine':
         for x in data:
@@ -137,10 +138,9 @@ def flag_mean_iteration(data, Y0, weight, fast = False, eps = .0000001):
             al.append((cossq+eps)**(-1/4))
         elif weight == 'sine':
             m = np.min([r,x.shape[1]])
-            sinsq = r - np.trace(Y0.T @ x @ x.T @ Y0)
+            sinsq = m - np.trace(Y0.T @ x @ x.T @ Y0)
             al.append((sinsq+eps)**(-1/4))
         elif weight == 'geodesic':
-            r = np.min([r,x.shape[1]])
             sinsq = 1 - Y0.T @ x @ x.T @ Y0
             cossq = Y0.T @ x @ x.T @ Y0
             al.append((sinsq*cossq + eps)**(-1/4))
@@ -149,7 +149,7 @@ def flag_mean_iteration(data, Y0, weight, fast = False, eps = .0000001):
         aX.append(al[-1]*x)
         ii+= 1
 
-    Y = flag_mean(aX, k, fast)
+    Y = flag_mean(aX, r, fast)
 
     return Y
 
