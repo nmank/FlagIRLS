@@ -110,6 +110,7 @@ def flag_mean(data, r, fast = False):
 
 '''
 Calculates a weighted Flag Mean of data using a weight method for FlagIRLS
+ eps = .0000001 for paper examples
 
 Inputs:
     data - list of numpy arrays representing points on Gr(k_i,n)
@@ -158,6 +159,9 @@ def flag_mean_iteration(data, Y0, weight, fast = False, eps = .0000001):
 Use FlagIRLS on data to output a representative for a point in Gr(r,n) 
 which solves the input objection function
 
+Repeats until iterations = n_its or until objective function values of consecutive
+iterates are within 0.0000000001
+
 Inputs:
     data - list of numpy arrays representing points on Gr(k_i,n)
     r - the number of columns in the output
@@ -193,9 +197,16 @@ def irls_flag(data, r, n_its, sin_cos, opt_err = 'geodesic', fast = False, init 
     err.append(calc_error_1_2(data, Y, opt_err))
 
     #flag mean iteration function
-    for _ in range(n_its):
+    itr = 1
+    diff = 1
+    while itr <= n_its and diff > 0.0000000001:
         Y = flag_mean_iteration(data, Y, sin_cos, fast)
         err.append(calc_error_1_2(data, Y, opt_err))
+        diff  = np.abs(err[itr] - err[itr-1])
+        itr+=1
+    
+    if diff > 0.0000000001:
+        print('FlagIRLS not converged')
 
     return Y, err
 
