@@ -12,6 +12,7 @@ import numpy as np
 '''
 TODO
 
+- FIX r-tr() to use dimensions of outside matrix?
 - double check gradient descent
 - fix PLS code for fast == True
 - horst's algorithm?
