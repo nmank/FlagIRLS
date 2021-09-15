@@ -159,7 +159,7 @@ Use FlagIRLS on data to output a representative for a point in Gr(r,n)
 which solves the input objection function
 
 Repeats until iterations = n_its or until objective function values of consecutive
-iterates are within 0.0000000001
+iterates are within 0.0000000001 and are decreasing for every algorithm (except increasing for maximum cosine)
 
 Inputs:
     data - list of numpy arrays representing points on Gr(k_i,n)
@@ -196,18 +196,32 @@ def irls_flag(data, r, n_its, sin_cos, opt_err = 'geodesic', fast = False, init 
     err.append(calc_error_1_2(data, Y, opt_err))
 
     #flag mean iteration function
+    #uncomment the commented lines and 
+    #comment others to change convergence criteria
+    
     itr = 1
     diff = 1
     while itr <= n_its and diff > 0.0000000001:
+        Y0 = Y.copy()
         Y = flag_mean_iteration(data, Y, sin_cos, fast)
         err.append(calc_error_1_2(data, Y, opt_err))
-        diff  = np.abs(err[itr] - err[itr-1])
+#         diff = np.abs(err[itr] - err[itr-1])
+        diff  = err[itr-1] - err[itr]
+        if sin_cos == 'cosine':
+            diff = -diff
+           
         itr+=1
     
-    if diff > 0.0000000001:
-        print('FlagIRLS not converged')
+#     if diff < 0.0000000001:
+#         print('FlagIRLS not converged')
+    
+#     return Y, err
 
-    return Y, err
+
+    if diff > 0:
+        return Y, err
+    else:
+        return Y0, err[:-1]
 
 '''
 Calculates the gradient of a given Y0 and data given an objective function
@@ -268,13 +282,14 @@ Outputs:
     Y - a numpy array representing the solution to the chosen optimization algorithm
     err - a list of the objective function values at each iteration (objective function chosen by opt_err)
 '''
-def gradient_descent(data, r, alpha, n_its, sin_cos, init = 'random'):
+def gradient_descent(data, r, alpha, n_its, sin_cos, init = 'random', seed = 0):
     n = data[0].shape[0]
 
     #initialize
     if init == 'random':
+        np.random.seed(seed)
         #randomly
-        Y_raw = np.random.rand(n,k)
+        Y_raw = np.random.rand(n,r)
         Y = np.linalg.qr(Y_raw)[0][:,:r]
     else:
         Y = init

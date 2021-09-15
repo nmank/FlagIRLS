@@ -17,7 +17,7 @@ def add_line(data, lstyle, mkr, lbl, color = 'b', ci = 95):
     plt.fill_between(list(np.arange(len(med))), lower_ci, upper_ci, alpha=0.25, color = color)
     plt.xticks(np.arange(0, len(med), 2))
     # plt.rcParams["text.usetex"] =True
-    plt.plot(med, color = color, linestyle=lstyle, marker=mkr, markevery = 1, linewidth=.5, label = lbl)
+    plt.plot(med, color = color, linestyle=lstyle, marker=mkr, markevery = 1, linewidth=2, label = lbl)
 
 
 
@@ -34,6 +34,8 @@ def convergence_check(gr_list, n_its):
 
     irls_max_cosine = []
     gd_max_cosine = []
+    
+    
 
     Y_raw = np.random.rand(n,k)
     Y = np.linalg.qr(Y_raw)[0][:,:k]
@@ -66,12 +68,13 @@ def convergence_check(gr_list, n_its):
     MARKERS = ['D', 'o', 'X', '*', '<', 'd', 'S', '>', 's', 'v']
     COLORS = ['b','k','c','m','y']
 
-    add_line(irls_sin_median, LINESTYLES[0], MARKERS[0], 'FlagIRLS', 'g')
-    add_line(gd_sin_median, LINESTYLES[1], MARKERS[1], 'Gradient Descent', 'b')
+    add_line(irls_sin_median, LINESTYLES[0], None, 'FlagIRLS', 'b')
+    add_line(gd_sin_median, LINESTYLES[2], None, 'Gradient Descent', 'k')
     plt.xticks([0,1,2,3,4,5])
     plt.legend()
     plt.xlabel('Iteration')
     plt.ylabel('Objective function value')
+    plt.title('Sine Median')
     plt.savefig('./Figures/sin_median_convergence.png')
     plt.close()
 
@@ -81,12 +84,13 @@ def convergence_check(gr_list, n_its):
     # plt.savefig('./Figures/geodesic_median_convergence.png')
     # plt.close()
 
-    add_line(irls_max_cosine, LINESTYLES[0], MARKERS[0], 'FlagIRLS', 'g')
-    add_line(gd_max_cosine, LINESTYLES[1], MARKERS[1], 'Gradient Descent', 'b')
+    add_line(irls_max_cosine, LINESTYLES[3], None, 'FlagIRLS', 'g')
+    add_line(gd_max_cosine, LINESTYLES[2], None, 'Gradient Descent', 'k')
     plt.xticks([0,1,2,3,4,5])
     plt.legend()
     plt.xlabel('Iteration')
     plt.ylabel('Objective function value')
+    plt.title('Maximum Cosine')
     plt.savefig('./Figures/max_cosine_convergence.png')
     plt.close()
 
