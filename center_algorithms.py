@@ -211,7 +211,6 @@ def irls_flag(data, r, n_its, sin_cos, opt_err = 'geodesic', fast = False, init 
             diff = -diff
            
         itr+=1
-    print(itr)
     
 #     if diff < 0.0000000001:
 #         print('FlagIRLS not converged')

@@ -181,4 +181,4 @@ for n in range(5, 16, 1 ):
 
 sns.boxplot(x='Size of Codebook', y='Cluster Purity', hue='Algorithm', data = Purities)
 plt.legend(bbox_to_anchor=(1.01, 1), borderaxespad=0)
-plt.savefig(f_name)
+plt.savefig(f_name, bbox_inches='tight')
