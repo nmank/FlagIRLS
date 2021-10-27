@@ -11,27 +11,127 @@ import numpy as np
 '''
 TODO
 
+- add L2 Median
 - double check gradient descent
 - fix PLS code for fast == True
 - horst's algorithm?
 '''
 
 
-'''
-Calculate objective function value. 
 
-Inputs:
-    data - a list of numpy arrays representing points in Gr(k_i,n)
-    Y - a numpy array representing a point on Gr(r,n) 
-    sin_cos - a string defining the objective function
-                'cosine' = Maximum Cosine
-                'sine' = Sine Median
-                'sinsq' = Flag Mean
-                'geodesic' = Geodesic Median (CAUTION: only for k_i = r = 1)
-Outputs:
-    err - objective function value
-'''
+def gr_log(X,Y):
+    '''
+    Log map on the Grassmannian.
+    
+    Inputs:
+        X (np.array) a point about which the tangent space has been computed
+        Y (np.array) the point on the Grassmannian manifold that's mapped to the tangent space of X
+    Outputs:
+        TY (np.array) Y in the tangent space of X
+    '''
+    m = X.shape[0]
+
+    #temp = (np.eye(m)-X @ X.T) @ Y @ np.linalg.inv(X.T@Y)
+    #The following line is a slightly faster way to compute temp.
+
+    temp = np.eye(m) @ Y @ np.linalg.inv(X.T @ Y) - X @ (X.T @ Y) @ np.linalg.inv(X.T @ Y)
+    U,S,V = np.linalg.svd(temp, full_matrices = False)
+    Theta = np.arctan(S)
+    
+    TY = U @ np.diag(Theta) @ V.T
+    
+    return TY
+                                             
+
+def gr_exp(X, TY):
+    '''
+    Calculate the exponential map on the Grassmannian.
+    Inputs:
+        X: (np.array) is the point about which the tangent space has been
+          computed.
+        TY: (np.array) is a point in the tangent space of X.
+    Outputs:
+        Y: The output of the exponential map.
+    
+    '''
+    
+    U, S, V = np.linalg.svd(TY, full_matrices = False)
+    Y = X @ V @ np.diag(np.cos(S)) + U @ np.diag(np.sin(S))
+
+    return Y
+
+def gr_dist(X, Y):
+    if X.shape[1] > 1:
+        U,S,V = np.linalg.svd(X.T @ Y)
+        S[np.where(S >1)] = 1
+#         S[np.where(S < -1)] = -1
+        angles = np.real(np.arccos(S))
+#         print(angles)
+        dist = np.linalg.norm(angles)
+    else:
+        dist = calc_error_1_2([X], Y, 'geodesic')
+    return dist
+
+
+def l2_median(data, alpha, r, max_itrs, seed):
+    
+    
+    n = data[0].shape[0]
+    
+    np.random.seed(seed)
+    Y_raw = np.random.rand(n,r)-.5
+    Y = np.linalg.qr(Y_raw)[0][:,:r]
+    
+    itr = 0
+    errs = []
+    diff = 1
+    
+    while diff > 0.000001 and itr < max_itrs:
+        d_fracs = 0
+        ld_fracs = np.empty((n,r))
+        dists = []
+        for x in data:
+            dists.append(gr_dist(x, Y))
+            if dists[-1] > .0001:
+                d_fracs += 1 / dists[-1]
+                ld_fracs += gr_log(Y, x) / dists[-1]
+            else:
+                print('converged to datapoint')
+
+        if len(ld_fracs)==0:
+            return Y
+        else:
+            vk = ld_fracs/d_fracs
+            Y = gr_exp(Y, alpha * vk)
+            
+            errs.append(np.sum(dists))
+            
+            if itr > 0:
+                diff = np.abs(errs[-2] - errs[-1])
+            
+            Y = np.linalg.qr(Y)[0][:,:r]
+            
+            itr+=1 
+    
+    return Y, errs
+
+
+
 def calc_error_1_2(data, Y, sin_cos):
+    '''
+    Calculate objective function value. 
+
+    Inputs:
+        data - a list of numpy arrays representing points in Gr(k_i,n)
+        Y - a numpy array representing a point on Gr(r,n) 
+        sin_cos - a string defining the objective function
+                    'cosine' = Maximum Cosine
+                    'sine' = Sine Median
+                    'sinsq' = Flag Mean
+                    'geodesic' = Geodesic Median (CAUTION: only for k_i = r = 1)
+    Outputs:
+        err - objective function value
+    '''
     k = Y.shape[1]
     err = 0
     if sin_cos == 'cosine':
@@ -62,6 +162,9 @@ def calc_error_1_2(data, Y, sin_cos):
             elif cos < 0:
                 cos = 0
             err += np.arccos(np.sqrt(cos))
+    elif sin_cos == 'l2_med':
+        for x in data:
+            err += gr_dist(x, Y)
     return err
 
 
