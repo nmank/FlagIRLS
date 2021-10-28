@@ -87,8 +87,6 @@ def lbg_subspace(X, epsilon, n_centers = 17, opt_type = 'sine', n_its = 10, seed
             if len(idx) > 0:
                 if opt_type == 'sinesq':
                     centers.append(ca.flag_mean([X[i] for i in idx], r, fast = False))
-                elif opt_type == 'l2_med':
-                    centers.append(ca.l2_median([X[i] for i in idx], .1, r, 1000, seed)[0])
                 else:
                     centers.append(ca.irls_flag([X[i] for i in idx], r, n_its, opt_type, opt_type)[0])
         #         centers.append(np.mean([X[i] for i in idx], axis = 0))
@@ -112,6 +110,7 @@ def lbg_subspace(X, epsilon, n_centers = 17, opt_type = 'sine', n_its = 10, seed
         print(error)
 
     return centers, errors, distortions
+
 
 
 
@@ -147,35 +146,35 @@ X = [X[i] for i in idx]
 
 Purities = pandas.DataFrame(columns = ['Algorithm','Size of Codebook','Cluster Purity'])
 
-for n in range(5, 16,1):
+for n in range(5, 16, 1 ):
     sin_purities = []
     cos_purities = []
     flg_purities = []
-    for trial in range(20):
+    for trial in range(n_trials):
         print('.')
         print('.')
         print('.')
         print('sin start')
-        centers_sin, error_sin, dist_sin = lbg_subspace(X, .0001, n_centers = n, opt_type = 'sine', n_its = 10, seed = trial)
+        centers_sin, error_sin, dist_sin = lbg_subspace(X, .00001, n_centers = n, opt_type = 'sine', n_its = 10, seed = trial)
         sin_purity = cluster_purity(X, centers_sin, 'sine', labels_true)
-        print('l2 start')
-        centers_l2, error_l2, dist_l2 = lbg_subspace(X, .0001, n_centers = n, opt_type = 'l2_med', n_its = 10, seed = trial)
-        l2_purity = cluster_purity(X, centers_l2, 'l2_med', labels_true)
+        print('cos start')
+        centers_cos, error_cos, dist_cos = lbg_subspace(X, .00001, n_centers = n, opt_type = 'cosine', n_its = 10, seed = trial)
+        cos_purity = cluster_purity(X, centers_cos, 'cosine', labels_true)
         print('flg start')
-        centers_flg, error_flg, dist_flg = lbg_subspace(X, .0001, n_centers = n, opt_type = 'sinesq', seed = trial)
+        centers_flg, error_flg, dist_flg = lbg_subspace(X, .00001, n_centers = n, opt_type = 'sinesq', seed = trial)
         flg_purity = cluster_purity(X, centers_flg, 'sinesq', labels_true)
 
 
-        Purities = Purities.append({'Algorithm': 'Chordal Median', 
-                                'Number of Clusters': n,
+        Purities = Purities.append({'Algorithm': 'Sine Median', 
+                                'Size of Codebook': n,
                                 'Cluster Purity': sin_purity},
                                 ignore_index = True)
-        Purities = Purities.append({'Algorithm': 'L2 Median', 
-                                'Number of Clusters': n,
-                                'Cluster Purity': l2_purity},
+        Purities = Purities.append({'Algorithm': 'Maximum Cosine', 
+                                'Size of Codebook': n,
+                                'Cluster Purity': cos_purity},
                                 ignore_index = True)
         Purities = Purities.append({'Algorithm': 'Flag Mean', 
-                                'Number of Clusters': n,
+                                'Size of Codebook': n,
                                 'Cluster Purity': flg_purity},
                                 ignore_index = True)
 
