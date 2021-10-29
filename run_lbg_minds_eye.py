@@ -39,10 +39,11 @@ def cluster_purity(X, centers, opt_type, labels_true):
     count = 0
     for i in range(len(centers)):
         idx = np.where(index == i)[0]
-        cluster_labels = [labels_true[i] for i in idx]
-        most_common_label = max(set(cluster_labels), key = cluster_labels.count)
-        # count += cluster_labels.count(most_common_label)
-        count += cluster_labels.count(most_common_label)/len(idx)
+        if len(idx) != 0:
+            cluster_labels = [labels_true[i] for i in idx]
+            most_common_label = max(set(cluster_labels), key = cluster_labels.count)
+            # count += cluster_labels.count(most_common_label)
+            count += cluster_labels.count(most_common_label)/len(idx)
 
     # return count/len(X)
     return count/len(centers)
@@ -88,7 +89,7 @@ def lbg_subspace(X, epsilon, n_centers = 17, opt_type = 'sine', n_its = 10, seed
                 if opt_type == 'sinesq':
                     centers.append(ca.flag_mean([X[i] for i in idx], r, fast = False))
                 elif opt_type == 'l2_med':
-                    centers.append(ca.l2_median([X[i] for i in idx], .1, r, 1000, seed)[0])
+                    centers.append(ca.l2_median([X[i] for i in idx], .1, r, 1000)[0])
                 else:
                     centers.append(ca.irls_flag([X[i] for i in idx], r, n_its, opt_type, opt_type)[0])
         #         centers.append(np.mean([X[i] for i in idx], axis = 0))
@@ -145,13 +146,14 @@ labels_true = [labels_true[i] for i in idx]
 X = [X[i] for i in idx]
 
 
-Purities = pandas.DataFrame(columns = ['Algorithm','Size of Codebook','Cluster Purity'])
+Purities = pandas.DataFrame(columns = ['Algorithm','Codebook Size','Cluster Purity'])
 
-for n in range(5, 16,1):
+for n in range(4, 24, 4):
     sin_purities = []
     cos_purities = []
     flg_purities = []
-    for trial in range(20):
+    for trial in range(10):
+        print('cluster '+str(n)+' trial '+str(trial))
         print('.')
         print('.')
         print('.')
@@ -166,20 +168,25 @@ for n in range(5, 16,1):
         flg_purity = cluster_purity(X, centers_flg, 'sinesq', labels_true)
 
 
-        Purities = Purities.append({'Algorithm': 'Chordal Median', 
-                                'Number of Clusters': n,
+        Purities = Purities.append({'Algorithm': 'Flag Median', 
+                                'Codebook Size': n,
                                 'Cluster Purity': sin_purity},
                                 ignore_index = True)
         Purities = Purities.append({'Algorithm': 'L2 Median', 
-                                'Number of Clusters': n,
+                                'Codebook Size': n,
                                 'Cluster Purity': l2_purity},
                                 ignore_index = True)
         Purities = Purities.append({'Algorithm': 'Flag Mean', 
-                                'Number of Clusters': n,
+                                'Codebook Size': n,
                                 'Cluster Purity': flg_purity},
                                 ignore_index = True)
+    print(Purities)
+    Purities.to_csv('LBG_results_newest'+str(n)+'.csv')
+        
 
 
-sns.boxplot(x='Size of Codebook', y='Cluster Purity', hue='Algorithm', data = Purities)
+sns.boxplot(x='Codebook Size', y='Cluster Purity', hue='Algorithm', data = Purities)
 plt.legend(bbox_to_anchor=(1.01, 1), borderaxespad=0)
 plt.savefig(f_name, bbox_inches='tight')
+
+Purities.to_csv('LBG_results_newest.csv')

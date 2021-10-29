@@ -73,7 +73,7 @@ def gr_dist(X, Y):
     return dist
 
 
-def l2_median(data, alpha, r, max_itrs, seed):
+def l2_median(data, alpha, r, max_itrs, seed=0):
     
     
     n = data[0].shape[0]
@@ -109,7 +109,8 @@ def l2_median(data, alpha, r, max_itrs, seed):
             if itr > 0:
                 diff = np.abs(errs[-2] - errs[-1])
             
-            Y = np.linalg.qr(Y)[0][:,:r]
+            if not np.allclose(Y.T @ Y, np.eye(r,r)):
+                Y = np.linalg.qr(Y)[0][:,:r]
             
             itr+=1 
     
@@ -350,9 +351,11 @@ def calc_gradient(data, Y0, weight):
         elif weight == 'sine':
             r = np.min([k,x.shape[1]])
             sin_sq = r - np.trace(Y0.T @ x @ x.T @ Y0)
-            if sin_sq < .0000000001 :
+            if sin_sq < .00000001 :
                 sin_sq = 0
-            al.append(sin_sq**(-1/4))
+                print('converged to datapoint')
+            else:
+                al.append(sin_sq**(-1/4))
         elif weight == 'geodesic':
             r = np.min([k,x.shape[1]])
             al.append(((1 - Y0.T @ x @ x.T @ Y0)**(-1/4))*((Y0.T @ x @ x.T @ Y0)**(-1/4)))
