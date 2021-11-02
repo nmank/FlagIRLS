@@ -152,7 +152,7 @@ for n in range(4, 24, 4):
     sin_purities = []
     cos_purities = []
     flg_purities = []
-    for trial in range(10):
+    for trial in range(20):
         print('cluster '+str(n)+' trial '+str(trial))
         print('.')
         print('.')
@@ -181,7 +181,7 @@ for n in range(4, 24, 4):
                                 'Cluster Purity': flg_purity},
                                 ignore_index = True)
     print(Purities)
-    Purities.to_csv('LBG_results_newest'+str(n)+'.csv')
+    Purities.to_csv('LBG_results_20trials'+str(n)+'.csv')
         
 
 
@@ -189,4 +189,4 @@ sns.boxplot(x='Codebook Size', y='Cluster Purity', hue='Algorithm', data = Purit
 plt.legend(bbox_to_anchor=(1.01, 1), borderaxespad=0)
 plt.savefig(f_name, bbox_inches='tight')
 
-Purities.to_csv('LBG_results_newest.csv')
+Purities.to_csv('LBG_results_20trials.csv')
