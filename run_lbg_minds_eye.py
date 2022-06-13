@@ -8,13 +8,7 @@ import pandas
 from sklearn.manifold import MDS
 
 
-'''
-datapoints rows and centers columns
 
-sine
-cosine
-sine_sq
-'''
 def distance_matrix(X, C, opt_type = 'sine'):
     n = len(X)
     m = len(C)
@@ -152,7 +146,7 @@ for n in range(4, 24, 4):
     sin_purities = []
     cos_purities = []
     flg_purities = []
-    for trial in range(20):
+    for trial in range(n_trials):
         print('cluster '+str(n)+' trial '+str(trial))
         print('.')
         print('.')

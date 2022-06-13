@@ -110,7 +110,7 @@ def lbg_subspace(X, epsilon, n_centers = 17, opt_type = 'sine', n_its = 10, seed
 
 n_its= 10
 seed = 0
-n_trials = 20
+n_trials = 10
 
 
 base_path = '/data4/mankovic/action_youtube_gr/'
@@ -133,11 +133,11 @@ f_name = './youtube_lbg_'+str(n_trials)+'trials.png'
 
 Purities = pandas.DataFrame(columns = ['Algorithm','Codebook Size','Cluster Purity'])
 
-for n in range(4, 12, 2):
+for n in range(4, 24, 4):
     sin_purities = []
     cos_purities = []
     flg_purities = []
-    for trial in range(10):
+    for trial in range(n_trials):
         print('cluster '+str(n)+' trial '+str(trial))
         print('.')
         print('.')
@@ -155,18 +155,15 @@ for n in range(4, 12, 2):
                                 'Codebook Size': n,
                                 'Cluster Purity': sin_purity},
                                 ignore_index = True)
-        # Purities = Purities.append({'Algorithm': 'L2 Median', 
-        #                         'Codebook Size': n,
-        #                         'Cluster Purity': l2_purity},
-        #                         ignore_index = True)
+
         Purities = Purities.append({'Algorithm': 'Flag Mean', 
                                 'Codebook Size': n,
                                 'Cluster Purity': flg_purity},
                                 ignore_index = True)
-    print(Purities)
-    Purities.to_csv('youtube_LBG_results_20trials'+str(n)+'.csv')
+    # print(Purities)
+    # Purities.to_csv('youtube_LBG_results_20trials'+str(n)+'.csv')
         
-Purities.to_csv('LBG_results_20trials.csv')
+# Purities.to_csv('LBG_results_20trials.csv')
 
 sns.boxplot(x='Codebook Size', y='Cluster Purity', hue='Algorithm', data = Purities)
 plt.legend(bbox_to_anchor=(1.01, 1), borderaxespad=0)

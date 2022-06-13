@@ -7,6 +7,7 @@ by Nathan Mankovich
 
 
 import numpy as np
+import random
 
 '''
 TODO
@@ -62,7 +63,7 @@ def gr_exp(X, TY):
 
 def gr_dist(X, Y):
     if X.shape[1] > 1:
-        U,S,V = np.linalg.svd(X.T @ Y)
+        U,S,V = np.linalg.svd(X.T @ Y, full_matrices = False)
         S[np.where(S >1)] = 1
 #         S[np.where(S < -1)] = -1
         angles = np.real(np.arccos(S))
@@ -73,14 +74,17 @@ def gr_dist(X, Y):
     return dist
 
 
-def l2_median(data, alpha, r, max_itrs, seed=0):
-    
+def l2_median(data, alpha, r, max_itrs, seed=0, init_datapoint = False):
     
     n = data[0].shape[0]
     
-    np.random.seed(seed)
-    Y_raw = np.random.rand(n,r)-.5
-    Y = np.linalg.qr(Y_raw)[0][:,:r]
+    if init_datapoint:
+        np.random.seed(seed)
+        Y = data[np.random.randint(len(data))]
+    else:
+        np.random.seed(seed)
+        Y_raw = np.random.rand(n,r)-.5
+        Y = np.linalg.qr(Y_raw)[0][:,:r]
     
     itr = 0
     errs = []
@@ -206,7 +210,7 @@ def flag_mean(data, r, fast = False):
             err.append(err1[1:])
         
     else:
-        mean = np.linalg.svd(X)[0][:,:r]
+        mean = np.linalg.svd(X, full_matrices = False)[0][:,:r]
     return mean
 
 
@@ -228,13 +232,16 @@ Inputs:
 Outputs:
     Y- the weighted flag mean
 '''
-def flag_mean_iteration(data, Y0, weight, fast = False, eps = .0000001):
+def flag_mean_iteration(data, Y0, weight, fast = False, eps = .0000001, stochastic = 0):
     r = Y0.shape[1]
     
     aX = []
     al = []
 
     ii=0
+
+    if stochastic > 0:
+        data = random.sample(data,stochastic)
 
     for x in data:
         if weight == 'cosine':
@@ -283,7 +290,7 @@ Outputs:
     Y - a numpy array representing the solution to the chosen optimization algorithm
     err - a list of the objective function values at each iteration (objective function chosen by opt_err)
 '''
-def irls_flag(data, r, n_its, sin_cos, opt_err = 'geodesic', fast = False, init = 'random', seed = 0): 
+def irls_flag(data, r, n_its, sin_cos, opt_err = 'geodesic', fast = False, init = 'random', seed = 0, stochastic = 0): 
     err = []
     n = data[0].shape[0]
 
@@ -294,6 +301,9 @@ def irls_flag(data, r, n_its, sin_cos, opt_err = 'geodesic', fast = False, init 
         np.random.seed(seed)
         Y_raw = np.random.rand(n,r)-.5
         Y = np.linalg.qr(Y_raw)[0][:,:r]
+    elif init == 'data':
+        np.random.seed(seed)
+        Y = data[np.random.randint(len(data))]
     else:
         Y = init
 
@@ -305,9 +315,10 @@ def irls_flag(data, r, n_its, sin_cos, opt_err = 'geodesic', fast = False, init 
     
     itr = 1
     diff = 1
-    while itr <= n_its and diff > 0.0000000001:
+    #changed from 0.0000000001
+    while itr <= n_its and diff > 1e-12:
         Y0 = Y.copy()
-        Y = flag_mean_iteration(data, Y, sin_cos, fast)
+        Y = flag_mean_iteration(data, Y, sin_cos, fast, stochastic  = stochastic)
         err.append(calc_error_1_2(data, Y, opt_err))
 #         diff = np.abs(err[itr] - err[itr-1])
         diff  = err[itr-1] - err[itr]
@@ -407,14 +418,7 @@ def gradient_descent(data, r, alpha, n_its, sin_cos, init = 'random', seed = 0):
         Fy = calc_gradient(data,Y,sin_cos)
         # project the gradient onto the tangent space
         G = (np.eye(n)-Y@Y.T)@Fy
-        # %error check
-        # if sum(G) == 0 || any(isnan(G))
-        #     Fy
-        #     G
-        #     break
-        # end
-        # move to a point that is alpha along the geodesic at Y0 in the
-        # direction of G
+        
         [U,S,V] = np.linalg.svd(G)
         cosin = np.diag(np.cos(-alpha*S))
         sin = np.vstack([np.diag(np.sin(-alpha*S)), np.zeros((n-r,r))])
