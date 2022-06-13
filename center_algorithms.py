@@ -1,23 +1,9 @@
 '''
-This file contains the FlagIRLS algorithm.
+This file contains the FlagIRLS, l2-median and grassmannian gradient descent algorithms.
 
 by Nathan Mankovich
-    nathan.mankovich@gmail.com
 '''
-
-
 import numpy as np
-import random
-
-'''
-TODO
-
-- add L2 Median
-- double check gradient descent
-- fix PLS code for fast == True
-- horst's algorithm?
-'''
-
 
 
 def gr_log(X,Y):
@@ -46,7 +32,8 @@ def gr_log(X,Y):
 
 def gr_exp(X, TY):
     '''
-    Calculate the exponential map on the Grassmannian.
+    Exponential map on the Grassmannian.
+
     Inputs:
         X: (np.array) is the point about which the tangent space has been
           computed.
@@ -61,7 +48,18 @@ def gr_exp(X, TY):
 
     return Y
 
+
+
 def gr_dist(X, Y):
+    '''
+    Geodesic distance on the Grassmannian
+
+    inputs:
+        X- numpy array
+        Y- numpy array
+    outputs:
+        dist- the geodesic distance between X and Y
+    '''
     if X.shape[1] > 1:
         U,S,V = np.linalg.svd(X.T @ Y, full_matrices = False)
         S[np.where(S >1)] = 1
@@ -75,6 +73,20 @@ def gr_dist(X, Y):
 
 
 def l2_median(data, alpha, r, max_itrs, seed=0, init_datapoint = False):
+    '''
+    Code adopted from Tim Marrinan (translated from matlab into python)
+
+    inputs:
+        data- list of numpy arrays 
+        alpha- float for the step size
+        r- integer for Gr(r,n) where the output 'lives'
+        max_itrs- integer for the maximum number of iterations
+        seed- integer for the numpy random seed for the algorithm initialization
+        init_datapoint- boolean, True for intializing at a datapoint, False for random initialization
+    outputs:
+        Y- numpy array for the l2-median
+        err- objective function values at each iteration
+    '''
     
     n = data[0].shape[0]
     
@@ -99,7 +111,7 @@ def l2_median(data, alpha, r, max_itrs, seed=0, init_datapoint = False):
             if dists[-1] > .0001:
                 d_fracs += 1 / dists[-1]
                 ld_fracs += gr_log(Y, x) / dists[-1]
-            else:
+            elif not init_datapoint:
                 print('converged to datapoint')
 
         if len(ld_fracs)==0:
@@ -139,10 +151,7 @@ def calc_error_1_2(data, Y, sin_cos):
     '''
     k = Y.shape[1]
     err = 0
-    if sin_cos == 'cosine':
-        for x in data:
-            err += np.sqrt(np.trace(Y.T @ x @ x.T @ Y))
-    elif sin_cos == 'sine':
+    if sin_cos == 'sine':
         for x in data:
             r = np.min([k,x.shape[1]])
             sin_sq = r - np.trace(Y.T @ x @ x.T @ Y)
@@ -150,6 +159,9 @@ def calc_error_1_2(data, Y, sin_cos):
             if sin_sq < 0:
                 sin_sq = 0
             err += np.sqrt(sin_sq)
+    elif sin_cos == 'cosine':
+        for x in data:
+            err += np.sqrt(np.trace(Y.T @ x @ x.T @ Y))
     elif sin_cos == 'sinesq':
         for x in data:
             r = np.min([k,x.shape[1]])
@@ -173,66 +185,41 @@ def calc_error_1_2(data, Y, sin_cos):
     return err
 
 
-'''
-Calculate the Flag Mean
 
-Inputs:
-    data - list of numpy arrays representing points on Gr(k_i,n)
-    r - integer number of columns in flag mean
-    fast - use faster eigenvalue calculation
-Outputs:
-    mean - a numpy array representing the Flag Mean of the data
-'''
-def flag_mean(data, r, fast = False):
+def flag_mean(data, r):
+    '''
+    Calculate the Flag Mean
+
+    Inputs:
+        data - list of numpy arrays representing points on Gr(k_i,n)
+        r - integer number of columns in flag mean
+    Outputs:
+        mean - a numpy array representing the Flag Mean of the data
+    ''' 
     X = np.hstack(data)
     
-    #This doesn't work yet!
-    if fast:
-        #Initialize
-        # U  = X[:,:k][:] 
-        mean = np.random.rand(X.shape[0],r)
-        V = np.zeros((X.shape[1],r))
+    mean = np.linalg.svd(X, full_matrices = False)[0][:,:r]
 
-        #err[j] stores 2-norm squared difference between ith and (i+1)th iterate of U[:,j]
-        err = []
-        #iteration of partial least squares
-        for j in range(r):
-            err1 = []
-            err1.append(1)
-            while err1[-1] > .000000001:
-            # for _ in range(n_iters):
-                old_U = mean[:,[j]][:]
-                V[:,j] = mean[:,j] @ X / (mean[:,j] @ mean[:,[j]])
-                V[:,j] = V[:,j]/np.linalg.norm(V[:,j])
-                new_U =  X @ V[:,[j]] / (V[:,j] @ V[:,[j]])
-                err1.append(np.linalg.norm(old_U - new_U)**2)
-                mean[:,[j]] = new_U[:]
-            err.append(err1[1:])
-        
-    else:
-        mean = np.linalg.svd(X, full_matrices = False)[0][:,:r]
     return mean
 
 
 
-'''
-Calculates a weighted Flag Mean of data using a weight method for FlagIRLS
- eps = .0000001 for paper examples
 
-Inputs:
-    data - list of numpy arrays representing points on Gr(k_i,n)
-    Y0 - a numpy array representing a point on Gr(r,n)
-    weight - a string defining the objective function
-                'cosine' = Maximum Cosine
-                'sine' = Sine Median
-                'sinsq' = Flag Mean
-                'geodesic' = Geodesic Median (CAUTION: only for k_i = r = 1)
-    fast - use faster eigenvalue calculation
-    eps - a small perturbation to the weights to avoid dividing by zero
-Outputs:
-    Y- the weighted flag mean
-'''
-def flag_mean_iteration(data, Y0, weight, fast = False, eps = .0000001, stochastic = 0):
+def flag_mean_iteration(data, Y0, weight, eps = .0000001):
+    '''
+    Calculates a weighted Flag Mean of data using a weight method for FlagIRLS
+    eps = .0000001 for paper examples
+
+    Inputs:
+        data - list of numpy arrays representing points on Gr(k_i,n)
+        Y0 - a numpy array representing a point on Gr(r,n)
+        weight - a string defining the objective function
+                    'sine' = flag median
+                    'sinsq' = flag mean
+        eps - a small perturbation to the weights to avoid dividing by zero
+    Outputs:
+        Y- the weighted flag mean
+    '''
     r = Y0.shape[1]
     
     aX = []
@@ -240,17 +227,14 @@ def flag_mean_iteration(data, Y0, weight, fast = False, eps = .0000001, stochast
 
     ii=0
 
-    if stochastic > 0:
-        data = random.sample(data,stochastic)
-
     for x in data:
-        if weight == 'cosine':
-            cossq = np.trace(Y0.T @ x @ x.T @ Y0)
-            al.append((cossq+eps)**(-1/4))
-        elif weight == 'sine':
+        if weight == 'sine':
             m = np.min([r,x.shape[1]])
             sinsq = m - np.trace(Y0.T @ x @ x.T @ Y0)
             al.append((sinsq+eps)**(-1/4))
+        elif weight == 'cosine':
+            cossq = np.trace(Y0.T @ x @ x.T @ Y0)
+            al.append((cossq+eps)**(-1/4))
         elif weight == 'geodesic':
             sinsq = 1 - Y0.T @ x @ x.T @ Y0
             cossq = Y0.T @ x @ x.T @ Y0
@@ -260,37 +244,34 @@ def flag_mean_iteration(data, Y0, weight, fast = False, eps = .0000001, stochast
         aX.append(al[-1]*x)
         ii+= 1
 
-    Y = flag_mean(aX, r, fast)
+    Y = flag_mean(aX, r)
 
     return Y
 
 
-'''
-Use FlagIRLS on data to output a representative for a point in Gr(r,n) 
-which solves the input objection function
 
-Repeats until iterations = n_its or until objective function values of consecutive
-iterates are within 0.0000000001 and are decreasing for every algorithm (except increasing for maximum cosine)
+def irls_flag(data, r, n_its, sin_cos, opt_err = 'geodesic', init = 'random', seed = 0): 
+    '''
+    Use FlagIRLS on data to output a representative for a point in Gr(r,n) 
+    which solves the input objection function
 
-Inputs:
-    data - list of numpy arrays representing points on Gr(k_i,n)
-    r - the number of columns in the output
-    n_its - number of iterations for the algorithm
-    sin_cos - a string defining the objective function for FlagIRLS
-                'cosine' = Maximum Cosine
-                'sine' = Sine Median
-                'sinsq' = Flag Mean
-                'geodesic' = Geodesic Median (CAUTION: only for k_i = r = 1)
-    opt_err - string for objective function values in err (same options as sin_cos)
-    fast - use faster eigenvalue calculation
-    init - string 'random' for random initlalization. 
-           otherwise input a numpy array for the inital point
-    seed - seed for random initialization, for reproducibility of results
-Outputs:
-    Y - a numpy array representing the solution to the chosen optimization algorithm
-    err - a list of the objective function values at each iteration (objective function chosen by opt_err)
-'''
-def irls_flag(data, r, n_its, sin_cos, opt_err = 'geodesic', fast = False, init = 'random', seed = 0, stochastic = 0): 
+    Repeats until iterations = n_its or until objective function values of consecutive
+    iterates are within 0.0000000001 and are decreasing for every algorithm (except increasing for maximum cosine)
+
+    Inputs:
+        data - list of numpy arrays representing points on Gr(k_i,n)
+        r - the number of columns in the output
+        n_its - number of iterations for the algorithm
+        sin_cos - a string defining the objective function for FlagIRLS
+                    'sine' = flag median
+        opt_err - string for objective function values in err (same options as sin_cos)
+        init - string 'random' for random initlalization. 
+            otherwise input a numpy array for the inital point
+        seed - seed for random initialization, for reproducibility of results
+    Outputs:
+        Y - a numpy array representing the solution to the chosen optimization algorithm
+        err - a list of the objective function values at each iteration (objective function chosen by opt_err)
+    '''
     err = []
     n = data[0].shape[0]
 
@@ -315,22 +296,14 @@ def irls_flag(data, r, n_its, sin_cos, opt_err = 'geodesic', fast = False, init 
     
     itr = 1
     diff = 1
-    #changed from 0.0000000001
-    while itr <= n_its and diff > 1e-12:
+    while itr <= n_its and diff > 0.0000000001:
         Y0 = Y.copy()
-        Y = flag_mean_iteration(data, Y, sin_cos, fast, stochastic  = stochastic)
+        Y = flag_mean_iteration(data, Y, sin_cos)
         err.append(calc_error_1_2(data, Y, opt_err))
-#         diff = np.abs(err[itr] - err[itr-1])
         diff  = err[itr-1] - err[itr]
-        if sin_cos == 'cosine':
-            diff = -diff
            
         itr+=1
     
-#     if diff < 0.0000000001:
-#         print('FlagIRLS not converged')
-    
-#     return Y, err
 
 
     if diff > 0:
@@ -338,28 +311,24 @@ def irls_flag(data, r, n_its, sin_cos, opt_err = 'geodesic', fast = False, init 
     else:
         return Y0, err[:-1]
 
-'''
-Calculates the gradient of a given Y0 and data given an objective function
-Inputs:
-    data - list of numpy arrays representing points on Gr(k_i,n)
-    Y0 - a representative for a point on Gr(r,n)
-    weight - a string defining the objective function
-                'cosine' = Maximum Cosine
-                'sine' = Sine Median
-                'sinsq' = Flag Mean
-                'geodesic' = Geodesic Median (CAUTION: only for k_i = r = 1)
-Output:
-    grad - numpy array of the gradient
 
-'''
-def calc_gradient(data, Y0, weight):
+def calc_gradient(data, Y0, weight = 'sine'):
+    '''
+    Calculates the gradient of a given Y0 and data given an objective function
+    Inputs:
+        data - list of numpy arrays representing points on Gr(k_i,n)
+        Y0 - a representative for a point on Gr(r,n)
+        weight - a string defining the objective function
+                    'sine' = flag median
+    Output:
+        grad - numpy array of the gradient
+
+    '''
     k = Y0.shape[1]
     aX = []
     al = []
     for x in data:
-        if weight == 'cosine':
-            al.append(np.trace(Y0.T @ x @ x.T @ Y0)**(-1/4))
-        elif weight == 'sine':
+        if weight == 'sine':
             r = np.min([k,x.shape[1]])
             sin_sq = r - np.trace(Y0.T @ x @ x.T @ Y0)
             if sin_sq < .00000001 :
@@ -367,11 +336,23 @@ def calc_gradient(data, Y0, weight):
                 print('converged to datapoint')
             else:
                 al.append(sin_sq**(-1/4))
+        elif weight == 'cosine':
+            cos_sq = np.trace(Y0.T @ x @ x.T @ Y0)
+            if cos_sq < .00000001 :
+                cos_sq = 0
+                print('converged to datapoint')
+            else:
+                al.append(cos_sq**(-1/4))
         elif weight == 'geodesic':
             r = np.min([k,x.shape[1]])
-            al.append(((1 - Y0.T @ x @ x.T @ Y0)**(-1/4))*((Y0.T @ x @ x.T @ Y0)**(-1/4)))
+            cos_sq = Y0.T @ x @ x.T @ Y0
+            if cos_sq < .00000001  or np.abs(cos_sq-1) < .00000001:
+                cos_sq = 0
+                print('converged to datapoint')
+            else:
+                al.append(((1 - cos_sq)**(-1/4))*(cos_sq**(-1/4)))
         else:
-            print('sin_cos must be geodesic, sine or cosine')
+            print('weight must be sine')
         aX.append(al[-1]*x)
 
     big_X = np.hstack(aX)
@@ -381,25 +362,24 @@ def calc_gradient(data, Y0, weight):
     return grad
 
 
-'''
-Runs Grassmannian gradient descent
-Inputs:
-    data - list of numpy arrays representing points on Gr(k,n)
-    r - integer for the number of columns in the output
-    alpha - step size
-    n_its - number of iterations
-    sin_cos - a string defining the objective function
-                'cosine' = Maximum Cosine
-                'sine' = Sine Median
-                'sinsq' = Flag Mean
-                'geodesic' = Geodesic Median (CAUTION: only for k_i = r = 1)
-    init - string 'random' for random initlalization. 
-           otherwise input a numpy array for the inital point
-Outputs:
-    Y - a numpy array representing the solution to the chosen optimization algorithm
-    err - a list of the objective function values at each iteration (objective function chosen by opt_err)
-'''
+
 def gradient_descent(data, r, alpha, n_its, sin_cos, init = 'random', seed = 0):
+    '''
+    Runs Grassmannian gradient descent
+    Inputs:
+        data - list of numpy arrays representing points on Gr(k,n)
+        r - integer for the number of columns in the output
+        alpha - step size
+        n_its - number of iterations
+        sin_cos - a string defining the objective function
+                    'sine' = flag median
+                    'sinsq' = flag mean
+        init - string 'random' for random initlalization. 
+            otherwise input a numpy array for the inital point
+    Outputs:
+        Y - a numpy array representing the solution to the chosen optimization algorithm
+        err - a list of the objective function values at each iteration (objective function chosen by opt_err)
+    '''
     n = data[0].shape[0]
 
     #initialize
@@ -429,3 +409,142 @@ def gradient_descent(data, r, alpha, n_its, sin_cos, init = 'random', seed = 0):
         
         err.append(calc_error_1_2(data, Y, sin_cos))
     return Y, err
+
+
+
+
+def distance_matrix(X, C):
+    '''
+    Calculate a chordal distance matrix for the dataset
+
+    Inputs:
+        X- list of numpy arrays for the datset
+        C- list of numpy arrays for the elements of the codebook
+    Outputs:
+        Distances- a numpy array with 
+            rows corresponding to elements of the codebook and 
+            columns corresponding to data
+    '''
+    n = len(X)
+    m = len(C)
+    Distances = np.zeros((m,n))
+
+
+    for i in range(m):
+        for j in range(n):
+            Distances[i,j] = calc_error_1_2([C[i]], X[j], 'sine')
+            
+    return Distances
+
+def cluster_purity(X, centers, labels_true):
+    '''
+    Calculate the cluster purity of the dataset
+
+    Inputs:
+        X- list of numpy arrays for the dataset
+        centers- a list of numpy arrays for the codebook
+        labels_true- a list of the true labels
+    Outputs:
+        purity- a float for the cluster purity
+    '''
+
+    #calculate distance matrix
+    d_mat = distance_matrix(X, centers)
+
+    #find the closest center for each point
+    index = np.argmin(d_mat, axis = 0)
+    
+    count = 0
+    for i in range(len(centers)):
+        idx = np.where(index == i)[0]
+        if len(idx) != 0:
+            cluster_labels = [labels_true[i] for i in idx]
+            most_common_label = max(set(cluster_labels), key = cluster_labels.count)
+            # count += cluster_labels.count(most_common_label)
+            count += cluster_labels.count(most_common_label)/len(idx)
+
+    # return count/len(X)
+    purity = count/len(centers)
+    return purity
+
+
+def lbg_subspace(X, epsilon, n_centers = 17, opt_type = 'sine', n_its = 10, seed = 1, r = 48):
+    '''
+    LBG clustering with subspaces
+    
+    Inputs:
+        X- a list of numpy array for the dataset
+        epsilon- float for a convergence parameter
+        n_centers- int for the codebook size
+        opt_type- string for the type of LBG clustering
+            'sine' for flag median
+            'sinesq' for flag mean
+            'l2_med' for l2-median
+        n_its- int for the number of iterations
+        seed- seed for initial codebook selection
+        r- int, the output is in Gr(r,n)
+    Outputs:
+        centers- a list of numpy arrays for the centers
+        errors- a list for the the normalized consecutive distortion error at each iteration
+        distortions- a list for the cluster distortions at each iteration
+    '''
+    n_pts = len(X)
+    error = 1
+    distortions = []
+
+    #init centers
+    np.random.seed(seed)
+    centers = []
+    for i in range(n_centers):
+        centers.append(X[np.random.randint(n_pts)])
+
+    #calculate distance matrix
+    d_mat = distance_matrix(X, centers)
+
+    #find the closest center for each point
+    index = np.argmin(d_mat, axis = 0)
+
+    #calculate first distortion
+    new_distortion = np.sum(d_mat[index])
+
+    distortions.append(new_distortion)
+
+
+    errors = []
+    while error > epsilon:
+
+        #set new distortion as old one
+        old_distortion = new_distortion
+
+        m = len(centers)
+
+        #calculate new centers
+        centers = []
+        for c in range(m):
+            idx = np.where(index == c)[0]
+            if len(idx) > 0:
+                if opt_type == 'sinesq':
+                    centers.append(flag_mean([X[i] for i in idx], r, fast = False))
+                elif opt_type == 'l2_med':
+                    centers.append(l2_median([X[i] for i in idx], .1, r, 1000)[0])
+                else:
+                    centers.append(irls_flag([X[i] for i in idx], r, n_its, 'sine', 'sine')[0])
+
+        #calculate distance matrix
+        d_mat = distance_matrix(X, centers)
+
+        #find the closest center for each point
+        index = np.argmin(d_mat, axis = 0)
+
+        #new distortion
+        new_distortion = np.sum(d_mat[index])
+
+        distortions.append(new_distortion)
+
+        if new_distortion <0.00000000001:
+            error = 0
+        else:
+            error = np.abs(new_distortion - old_distortion)/old_distortion
+        errors.append(error)
+
+    return centers, errors, distortions
