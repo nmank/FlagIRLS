@@ -203,6 +203,9 @@ def flag_mean(data, r):
     return mean
 
 
+def eigengene(data, r):
+    X = np.hstack(data)
+    return np.linalg.svd(X @ X.T)[0][:,:r]
 
 
 def flag_mean_iteration(data, Y0, weight, eps = .0000001):
