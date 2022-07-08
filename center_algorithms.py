@@ -416,7 +416,7 @@ def gradient_descent(data, r, alpha, n_its, sin_cos, init = 'random', seed = 0):
 
 
 
-def distance_matrix(X, C):
+def distance_matrix(X, C, similarity = False):
     '''
     Calculate a chordal distance matrix for the dataset
 
@@ -432,10 +432,16 @@ def distance_matrix(X, C):
     m = len(C)
     Distances = np.zeros((m,n))
 
+    if similarity:
+        sin_cos = 'cosine'
+
+    else:
+        sin_cos = 'sine'
+
 
     for i in range(m):
         for j in range(n):
-            Distances[i,j] = calc_error_1_2([C[i]], X[j], 'sine')
+            Distances[i,j] = calc_error_1_2([C[i]], X[j], sin_cos)
             
     return Distances
 
@@ -471,7 +477,7 @@ def cluster_purity(X, centers, labels_true):
     return purity
 
 
-def lbg_subspace(X, epsilon, n_centers = 17, opt_type = 'sine', n_its = 10, seed = 1, r = 48):
+def lbg_subspace(X, epsilon, centers = [], n_centers = 17, opt_type = 'sine', n_its = 10, seed = 1, r = 48, similarity = False):
     '''
     LBG clustering with subspaces
     
@@ -495,17 +501,21 @@ def lbg_subspace(X, epsilon, n_centers = 17, opt_type = 'sine', n_its = 10, seed
     error = 1
     distortions = []
 
-    #init centers
-    np.random.seed(seed)
-    centers = []
-    for i in range(n_centers):
-        centers.append(X[np.random.randint(n_pts)])
+    #init centers if centers aren't provided
+    if len(centers) == 0:
+        np.random.seed(seed)
+        centers = []
+        for i in range(n_centers):
+            centers.append(X[np.random.randint(n_pts)])
 
     #calculate distance matrix
-    d_mat = distance_matrix(X, centers)
+    d_mat = distance_matrix(X, centers, similarity)
 
     #find the closest center for each point
-    index = np.argmin(d_mat, axis = 0)
+    if similarity:
+        index  = np.argmax(d_mat, axis = 0)
+    else:
+        index = np.argmin(d_mat, axis = 0)
 
     #calculate first distortion
     new_distortion = np.sum(d_mat[index])
@@ -528,6 +538,8 @@ def lbg_subspace(X, epsilon, n_centers = 17, opt_type = 'sine', n_its = 10, seed
             if len(idx) > 0:
                 if opt_type == 'sinesq':
                     centers.append(flag_mean([X[i] for i in idx], r, fast = False))
+                elif opt_type == 'eigengene':
+                    centers.append(eigengene([X[i] for i in idx], r))
                 elif opt_type == 'l2_med':
                     centers.append(l2_median([X[i] for i in idx], .1, r, 1000)[0])
                 else:
