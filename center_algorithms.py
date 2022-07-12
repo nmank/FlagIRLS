@@ -252,7 +252,6 @@ def flag_mean_iteration(data, Y0, weight, eps = .0000001):
     return Y
 
 
-
 def irls_flag(data, r, n_its, sin_cos, opt_err = 'geodesic', init = 'random', seed = 0): 
     '''
     Use FlagIRLS on data to output a representative for a point in Gr(r,n) 
@@ -363,7 +362,6 @@ def calc_gradient(data, Y0, weight = 'sine'):
     grad = big_X @ big_X.T @ Y0
 
     return grad
-
 
 
 def gradient_descent(data, r, alpha, n_its, sin_cos, init = 'random', seed = 0):
@@ -537,7 +535,7 @@ def lbg_subspace(X, epsilon, centers = [], n_centers = 17, opt_type = 'sine', n_
             idx = np.where(index == c)[0]
             if len(idx) > 0:
                 if opt_type == 'sinesq':
-                    centers.append(flag_mean([X[i] for i in idx], r, fast = False))
+                    centers.append(flag_mean([X[i] for i in idx], r))
                 elif opt_type == 'eigengene':
                     centers.append(eigengene([X[i] for i in idx], r))
                 elif opt_type == 'l2_med':
