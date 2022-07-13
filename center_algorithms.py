@@ -413,7 +413,6 @@ def gradient_descent(data, r, alpha, n_its, sin_cos, init = 'random', seed = 0):
 
 
 
-
 def distance_matrix(X, C, similarity = False):
     '''
     Calculate a chordal distance matrix for the dataset
@@ -544,10 +543,13 @@ def lbg_subspace(X, epsilon, centers = [], n_centers = 17, opt_type = 'sine', n_
                     centers.append(irls_flag([X[i] for i in idx], r, n_its, 'sine', 'sine')[0])
 
         #calculate distance matrix
-        d_mat = distance_matrix(X, centers)
+        d_mat = distance_matrix(X, centers, similarity)
 
         #find the closest center for each point
-        index = np.argmin(d_mat, axis = 0)
+        if similarity:
+            index  = np.argmax(d_mat, axis = 0)
+        else:
+            index = np.argmin(d_mat, axis = 0)
 
         #new distortion
         new_distortion = np.sum(d_mat[index])
