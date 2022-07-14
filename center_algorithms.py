@@ -5,8 +5,13 @@ by Nathan Mankovich
 '''
 import numpy as np
 
+'''
+TO DO:
+    -any way to speed up distance matrix calulations using big matrices to batch process shtuff
+'''
 
-def gr_log(X,Y):
+
+def gr_log(X: np.array,Y: np.array) -> np.array:
     '''
     Log map on the Grassmannian.
     
@@ -30,7 +35,7 @@ def gr_log(X,Y):
     return TY
                                              
 
-def gr_exp(X, TY):
+def gr_exp(X: np.array, TY: np.array) -> np.array:
     '''
     Exponential map on the Grassmannian.
 
@@ -50,7 +55,7 @@ def gr_exp(X, TY):
 
 
 
-def gr_dist(X, Y):
+def gr_dist(X: np.array, Y: np.array) -> np.array:
     '''
     Geodesic distance on the Grassmannian
 
@@ -72,7 +77,7 @@ def gr_dist(X, Y):
     return dist
 
 
-def l2_median(data, alpha, r, max_itrs, seed=0, init_datapoint = False):
+def l2_median(data: list, alpha: float, r: int, max_itrs: int, seed: int = 0, init_datapoint: bool = False) -> tuple:
     '''
     Code adopted from Tim Marrinan (translated from matlab into python)
 
@@ -134,7 +139,7 @@ def l2_median(data, alpha, r, max_itrs, seed=0, init_datapoint = False):
 
 
 
-def calc_error_1_2(data, Y, sin_cos):
+def calc_error_1_2(data: list, Y: np.array, sin_cos: str, labels: list = None) -> float:
     '''
     Calculate objective function value. 
 
@@ -146,6 +151,8 @@ def calc_error_1_2(data, Y, sin_cos):
                     'sine' = Sine Median
                     'sinsq' = Flag Mean
                     'geodesic' = Geodesic Median (CAUTION: only for k_i = r = 1)
+                    'zobs' = a subspace version of zobs
+        labels - labels for the features within the data
     Outputs:
         err - objective function value
     '''
@@ -182,11 +189,52 @@ def calc_error_1_2(data, Y, sin_cos):
     elif sin_cos == 'l2_med':
         for x in data:
             err += gr_dist(x, Y)
+
+    elif sin_cos == 'zobs':
+
+        idx_class0 = np.where(labels == 0)
+        idx_class1 = np.where(labels == 1)
+
+        Y0 = Y[idx_class0]
+        Y1 = Y[idx_class1]
+
+        for x in data:
+
+            x0 = x[idx_class0]
+            x1 = x[idx_class1]
+
+            #sloppy divide by 0 fix
+            x0_norm = np.trace(x0.T @ x0)
+            if x0_norm == 0:
+                x0_norm = 1
+            x1_norm = np.trace(x1.T @ x1)
+            if x1_norm == 0:
+                x1_norm = 1
+            Y0_norm = np.trace(Y0.T @ Y0)
+            if Y0_norm == 0:
+                Y0_norm = 1
+            Y1_norm = np.trace(Y1.T @ Y1)
+            if Y1_norm == 0:
+                Y1_norm = 1
+
+
+            
+            r0 = np.sqrt(np.trace(Y0.T @ x0 @ x0.T @ Y0)/(Y0_norm*x0_norm))
+            r1 = np.sqrt(np.trace(Y1.T @ x1 @ x1.T @ Y1)/(Y1_norm*x1_norm))
+
+            z_class0 = np.arctanh(r0)
+            z_class1 = np.arctanh(r1)
+
+            zobs = (z_class0-z_class1) / np.sqrt( 1/(len(idx_class0[0])-3) + 1/(len(idx_class1[0])-3))
+
+            zobs = np.abs(zobs)
+
+            err += zobs
     return err
 
 
 
-def flag_mean(data, r):
+def flag_mean(data: list, r: int) -> np.array:
     '''
     Calculate the Flag Mean
 
@@ -203,12 +251,12 @@ def flag_mean(data, r):
     return mean
 
 
-def eigengene(data, r):
+def eigengene(data: list, r: int) -> np.array:
     X = np.hstack(data)
     return np.linalg.svd(X @ X.T)[0][:,:r]
 
 
-def flag_mean_iteration(data, Y0, weight, eps = .0000001):
+def flag_mean_iteration(data: list, Y0: np.array, weight: float, eps: float = .0000001) -> np.array:
     '''
     Calculates a weighted Flag Mean of data using a weight method for FlagIRLS
     eps = .0000001 for paper examples
@@ -234,14 +282,14 @@ def flag_mean_iteration(data, Y0, weight, eps = .0000001):
         if weight == 'sine':
             m = np.min([r,x.shape[1]])
             sinsq = m - np.trace(Y0.T @ x @ x.T @ Y0)
-            al.append((sinsq+eps)**(-1/4))
+            al.append((np.max(sinsq,eps))**(-1/4))
         elif weight == 'cosine':
             cossq = np.trace(Y0.T @ x @ x.T @ Y0)
-            al.append((cossq+eps)**(-1/4))
+            al.append((np.max(cossq,eps))**(-1/4))
         elif weight == 'geodesic':
             sinsq = 1 - Y0.T @ x @ x.T @ Y0
             cossq = Y0.T @ x @ x.T @ Y0
-            al.append((sinsq*cossq + eps)**(-1/4))
+            al.append((np.max(sinsq*cossq, eps))**(-1/4))
         else:
             print('sin_cos must be geodesic, sine or cosine')
         aX.append(al[-1]*x)
@@ -252,7 +300,7 @@ def flag_mean_iteration(data, Y0, weight, eps = .0000001):
     return Y
 
 
-def irls_flag(data, r, n_its, sin_cos, opt_err = 'geodesic', init = 'random', seed = 0): 
+def irls_flag(data: list, r: int, n_its: int, sin_cos: str, opt_err: str = 'geodesic', init: str = 'random', seed: int = 0) -> tuple: 
     '''
     Use FlagIRLS on data to output a representative for a point in Gr(r,n) 
     which solves the input objection function
@@ -314,7 +362,7 @@ def irls_flag(data, r, n_its, sin_cos, opt_err = 'geodesic', init = 'random', se
         return Y0, err[:-1]
 
 
-def calc_gradient(data, Y0, weight = 'sine'):
+def calc_gradient(data: list, Y0: np.array, weight: str = 'sine') -> float:
     '''
     Calculates the gradient of a given Y0 and data given an objective function
     Inputs:
@@ -364,7 +412,7 @@ def calc_gradient(data, Y0, weight = 'sine'):
     return grad
 
 
-def gradient_descent(data, r, alpha, n_its, sin_cos, init = 'random', seed = 0):
+def gradient_descent(data: list, r: int, alpha: float, n_its: int, sin_cos: str, init: str = 'random', seed: int = 0):
     '''
     Runs Grassmannian gradient descent
     Inputs:
@@ -412,8 +460,7 @@ def gradient_descent(data, r, alpha, n_its, sin_cos, init = 'random', seed = 0):
     return Y, err
 
 
-
-def distance_matrix(X, C, similarity = False):
+def distance_matrix(X: list, C: list, similarity: bool = False, labels: list = None) -> np.array:
     '''
     Calculate a chordal distance matrix for the dataset
 
@@ -429,20 +476,22 @@ def distance_matrix(X, C, similarity = False):
     m = len(C)
     Distances = np.zeros((m,n))
 
-    if similarity:
-        sin_cos = 'cosine'
-
+    if labels is None:
+        if similarity:
+            sin_cos = 'cosine'
+        else:
+            sin_cos = 'sine'
     else:
-        sin_cos = 'sine'
+        sin_cos = 'zobs'
 
 
     for i in range(m):
         for j in range(n):
-            Distances[i,j] = calc_error_1_2([C[i]], X[j], sin_cos)
+            Distances[i,j] = calc_error_1_2([C[i]], X[j], sin_cos, labels)
             
     return Distances
 
-def cluster_purity(X, centers, labels_true):
+def cluster_purity(X: list, centers: list, labels_true: list) -> float:
     '''
     Calculate the cluster purity of the dataset
 
@@ -473,14 +522,16 @@ def cluster_purity(X, centers, labels_true):
     purity = count/len(centers)
     return purity
 
-
-def lbg_subspace(X, epsilon, centers = [], n_centers = 17, opt_type = 'sine', n_its = 10, seed = 1, r = 48, similarity = False):
+def lbg_subspace(X: list, epsilon: float, centers: list = None, n_centers: int = 17, 
+                 opt_type: str = 'sine', n_its: int = 10, seed: int = 1, r: int = 48, 
+                 similarity: bool = False, labels: list = None) -> tuple:
     '''
     LBG clustering with subspaces
     
     Inputs:
         X- a list of numpy array for the dataset
         epsilon- float for a convergence parameter
+        centers- list of initial centers
         n_centers- int for the codebook size
         opt_type- string for the type of LBG clustering
             'sine' for flag median
@@ -506,7 +557,7 @@ def lbg_subspace(X, epsilon, centers = [], n_centers = 17, opt_type = 'sine', n_
             centers.append(X[np.random.randint(n_pts)])
 
     #calculate distance matrix
-    d_mat = distance_matrix(X, centers, similarity)
+    d_mat = distance_matrix(X, centers, similarity, labels)
 
     #find the closest center for each point
     if similarity:
@@ -543,7 +594,7 @@ def lbg_subspace(X, epsilon, centers = [], n_centers = 17, opt_type = 'sine', n_
                     centers.append(irls_flag([X[i] for i in idx], r, n_its, 'sine', 'sine')[0])
 
         #calculate distance matrix
-        d_mat = distance_matrix(X, centers, similarity)
+        d_mat = distance_matrix(X, centers, similarity, labels)
 
         #find the closest center for each point
         if similarity:
