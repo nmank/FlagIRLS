@@ -282,14 +282,14 @@ def flag_mean_iteration(data: list, Y0: np.array, weight: float, eps: float = .0
         if weight == 'sine':
             m = np.min([r,x.shape[1]])
             sinsq = m - np.trace(Y0.T @ x @ x.T @ Y0)
-            al.append((np.max(sinsq,eps))**(-1/4))
+            al.append((max(sinsq,eps))**(-1/4))
         elif weight == 'cosine':
             cossq = np.trace(Y0.T @ x @ x.T @ Y0)
-            al.append((np.max(cossq,eps))**(-1/4))
+            al.append((max(cossq,eps))**(-1/4))
         elif weight == 'geodesic':
             sinsq = 1 - Y0.T @ x @ x.T @ Y0
             cossq = Y0.T @ x @ x.T @ Y0
-            al.append((np.max(sinsq*cossq, eps))**(-1/4))
+            al.append((max(sinsq*cossq, eps))**(-1/4))
         else:
             print('sin_cos must be geodesic, sine or cosine')
         aX.append(al[-1]*x)
@@ -346,7 +346,7 @@ def irls_flag(data: list, r: int, n_its: int, sin_cos: str, opt_err: str = 'geod
     
     itr = 1
     diff = 1
-    while itr <= n_its and diff > 0.0000000001:
+    while itr <= n_its and np.abs(diff) > 0.0000000001: #added abs
         Y0 = Y.copy()
         Y = flag_mean_iteration(data, Y, sin_cos)
         err.append(calc_error_1_2(data, Y, opt_err))
@@ -573,6 +573,7 @@ def lbg_subspace(X: list, epsilon: float, centers: list = None, n_centers: int =
 
     errors = []
     while error > epsilon:
+        print(f'iteration {len(errors)}')
 
         #set new distortion as old one
         old_distortion = new_distortion
