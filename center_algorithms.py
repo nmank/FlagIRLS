@@ -256,8 +256,8 @@ def eigengene(data: list, r: int) -> np.array:
     #mean center
     n = data[0].shape[0]
     X = np.hstack(data)
-    row_means = np.repeat(np.expand_dims(np.mean(X, axis = 1), axis = 0), n, axis = 0)
-    X = X/row_means
+    row_means = np.repeat(np.expand_dims(np.mean(X, axis = 1), axis = 1), n, axis = 1)
+    X = X - row_means
 
     #compute eigengene
     the_eigengene = np.linalg.svd(X @ X.T)[0][:,:r]
