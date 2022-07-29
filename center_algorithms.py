@@ -138,7 +138,6 @@ def l2_median(data: list, alpha: float, r: int, max_itrs: int, seed: int = 0, in
     return Y, errs
 
 
-
 def calc_error_1_2(data: list, Y: np.array, sin_cos: str, labels: list = None) -> float:
     '''
     Calculate objective function value. 
@@ -151,6 +150,7 @@ def calc_error_1_2(data: list, Y: np.array, sin_cos: str, labels: list = None) -
                     'sine' = Sine Median
                     'sinsq' = Flag Mean
                     'geodesic' = Geodesic Median (CAUTION: only for k_i = r = 1)
+                    'l2_med' = geodesic distance if k_i or r > 1
                     'zobs' = a subspace version of zobs
         labels - labels for the features within the data
     Outputs:
@@ -185,7 +185,8 @@ def calc_error_1_2(data: list, Y: np.array, sin_cos: str, labels: list = None) -
                 cos = 1
             elif cos < 0:
                 cos = 0
-            err += np.arccos(np.sqrt(cos))
+            geodesic_distance = np.arccos(np.sqrt(cos))
+            err += geodesic_distance
     elif sin_cos == 'l2_med':
         for x in data:
             err += gr_dist(x, Y)
@@ -233,7 +234,6 @@ def calc_error_1_2(data: list, Y: np.array, sin_cos: str, labels: list = None) -
     return err
 
 
-
 def flag_mean(data: list, r: int) -> np.array:
     '''
     Calculate the Flag Mean
@@ -252,8 +252,39 @@ def flag_mean(data: list, r: int) -> np.array:
 
 
 def eigengene(data: list, r: int) -> np.array:
+
+    #mean center
+    n = data[0].shape[0]
     X = np.hstack(data)
-    return np.linalg.svd(X @ X.T)[0][:,:r]
+    row_means = np.repeat(np.expand_dims(np.mean(X, axis = 1), axis = 0), n, axis = 0)
+    X = X/row_means
+
+    #compute eigengene
+    the_eigengene = np.linalg.svd(X @ X.T)[0][:,:r]
+    
+    return the_eigengene
+
+def zobs_eigengene(data: list, r: int, labels: np.array) -> np.array:
+    #IN CONSTRUCTION!
+    #need to mean center
+    n = data[0].shape[0]
+
+    idx_class0 = np.where(labels == 0)[0]
+    idx_class1 = np.where(labels == 1)[0]
+
+    data0 = [d[idx_class0,:] for d in data]
+    data1 = [d[idx_class1,:] for d in data]
+
+    eigengene0 = eigengene(data0, r)
+    eigengene1 = eigengene(data1, r)
+
+    the_zobs_eigengene = np.empty((n,r))
+
+    the_zobs_eigengene[idx_class0,:] = eigengene0
+    the_zobs_eigengene[idx_class1,:] = eigengene1
+
+    return the_zobs_eigengene
+
 
 
 def flag_mean_iteration(data: list, Y0: np.array, weight: float, eps: float = .0000001) -> np.array:
@@ -346,11 +377,15 @@ def irls_flag(data: list, r: int, n_its: int, sin_cos: str, opt_err: str = 'geod
     
     itr = 1
     diff = 1
-    while itr <= n_its and np.abs(diff) > 0.0000000001: #added abs
+    while itr <= n_its and diff > 0.0000000001: #added abs
         Y0 = Y.copy()
         Y = flag_mean_iteration(data, Y, sin_cos)
         err.append(calc_error_1_2(data, Y, opt_err))
-        diff  = err[itr-1] - err[itr]
+        if opt_err == 'cosine':
+            diff  = err[itr] - err[itr-1]
+        else:
+            diff  = err[itr-1] - err[itr]
+        # diff  = np.abs(err[itr-1] - err[itr])
            
         itr+=1
     
@@ -362,7 +397,7 @@ def irls_flag(data: list, r: int, n_its: int, sin_cos: str, opt_err: str = 'geod
         return Y0, err[:-1]
 
 
-def calc_gradient(data: list, Y0: np.array, weight: str = 'sine') -> float:
+def calc_gradient(data: list, Y0: np.array, weight: str = 'sine', eps: float = .0000001) -> float:
     '''
     Calculates the gradient of a given Y0 and data given an objective function
     Inputs:
@@ -381,28 +416,31 @@ def calc_gradient(data: list, Y0: np.array, weight: str = 'sine') -> float:
         if weight == 'sine':
             r = np.min([k,x.shape[1]])
             sin_sq = r - np.trace(Y0.T @ x @ x.T @ Y0)
-            if sin_sq < .00000001 :
-                sin_sq = 0
-                print('converged to datapoint')
-            else:
-                al.append(sin_sq**(-1/4))
+            # if sin_sq < eps :
+            #     sin_sq = 0
+            #     print('converged to datapoint')
+            # else:
+            #     al.append((max(sin_sq, eps))**(-1/4))
+            al.append((max(sin_sq, eps))**(-1/4))
         elif weight == 'cosine':
             cos_sq = np.trace(Y0.T @ x @ x.T @ Y0)
-            if cos_sq < .00000001 :
-                cos_sq = 0
-                print('converged to datapoint')
-            else:
-                al.append(cos_sq**(-1/4))
+            # if cos_sq < eps :
+            #     cos_sq = 0
+            #     print('converged to datapoint')
+            # else:
+            #     al.append((max(cos_sq, eps))**(-1/4))
+            al.append((max(cos_sq, eps))**(-1/4))
         elif weight == 'geodesic':
             r = np.min([k,x.shape[1]])
             cos_sq = Y0.T @ x @ x.T @ Y0
-            if cos_sq < .00000001  or np.abs(cos_sq-1) < .00000001:
-                cos_sq = 0
-                print('converged to datapoint')
-            else:
-                al.append(((1 - cos_sq)**(-1/4))*(cos_sq**(-1/4)))
+            # if cos_sq < eps  or np.abs(cos_sq-1) < eps:
+            #     cos_sq = 0
+            #     print('converged to datapoint')
+            # else:
+            #     al.append(((1 - max(cos_sq, eps))**(-1/4))*((max(cos_sq, eps))**(-1/4)))
+            al.append(((1 - max(cos_sq, eps))**(-1/4))*((max(cos_sq, eps))**(-1/4)))
         else:
-            print('weight must be sine')
+            print('weight must be sine, cosine, or geodesic')
         aX.append(al[-1]*x)
 
     big_X = np.hstack(aX)
@@ -435,7 +473,7 @@ def gradient_descent(data: list, r: int, alpha: float, n_its: int, sin_cos: str,
     if init == 'random':
         np.random.seed(seed)
         #randomly
-        Y_raw = np.random.rand(n,r)
+        Y_raw = np.random.rand(n,r)-.5
         Y = np.linalg.qr(Y_raw)[0][:,:r]
     else:
         Y = init
@@ -491,7 +529,7 @@ def distance_matrix(X: list, C: list, similarity: bool = False, labels: list = N
             
     return Distances
 
-def cluster_purity(X: list, centers: list, labels_true: list) -> float:
+def cluster_purity(X: list, centers: list, labels_true: list, similarity: bool = False, feature_labels: list = None) -> float:
     '''
     Calculate the cluster purity of the dataset
 
@@ -504,7 +542,7 @@ def cluster_purity(X: list, centers: list, labels_true: list) -> float:
     '''
 
     #calculate distance matrix
-    d_mat = distance_matrix(X, centers)
+    d_mat = distance_matrix(X, centers, similarity, feature_labels)
 
     #find the closest center for each point
     index = np.argmin(d_mat, axis = 0)
@@ -522,24 +560,26 @@ def cluster_purity(X: list, centers: list, labels_true: list) -> float:
     purity = count/len(centers)
     return purity
 
-def lbg_subspace(X: list, epsilon: float, centers: list = None, n_centers: int = 17, 
+def lbg_subspace(X: list, epsilon: float, centers: list = [], n_centers: int = 17, 
                  opt_type: str = 'sine', n_its: int = 10, seed: int = 1, r: int = 48, 
-                 similarity: bool = False, labels: list = None) -> tuple:
+                 similarity: bool = False, labels: np.array = None) -> tuple:
     '''
     LBG clustering with subspaces
     
     Inputs:
-        X- a list of numpy array for the dataset
-        epsilon- float for a convergence parameter
-        centers- list of initial centers
-        n_centers- int for the codebook size
-        opt_type- string for the type of LBG clustering
-            'sine' for flag median
-            'sinesq' for flag mean
-            'l2_med' for l2-median
-        n_its- int for the number of iterations
-        seed- seed for initial codebook selection
-        r- int, the output is in Gr(r,n)
+        X-              a list of numpy array for the dataset
+        epsilon-        float for a convergence parameter
+        centers-        list of initial centers
+        n_centers-      int for the codebook size
+        opt_type-       string for the type of LBG clustering
+            'sine'          for flag median
+            'sinesq'        for flag mean
+            'l2_med'        for l2-median
+        n_its-          int for the number of iterations
+        seed-           int, seed for initial codebook selection
+        r-              int, the output is in Gr(r,n)
+        similarity-     bool, True to use cosine similarity, otherwise use chordal distance
+        labels-         array, labels for the data, only for subspace zobs
     Outputs:
         centers- a list of numpy arrays for the centers
         errors- a list for the the normalized consecutive distortion error at each iteration
@@ -591,6 +631,8 @@ def lbg_subspace(X: list, epsilon: float, centers: list = None, n_centers: int =
                     centers.append(eigengene([X[i] for i in idx], r))
                 elif opt_type == 'l2_med':
                     centers.append(l2_median([X[i] for i in idx], .1, r, 1000)[0])
+                elif opt_type == 'zobs_eigengene':
+                    centers.append(zobs_eigengene([X[i] for i in idx], r, labels))
                 else:
                     centers.append(irls_flag([X[i] for i in idx], r, n_its, 'sine', 'sine')[0])
 
@@ -612,6 +654,7 @@ def lbg_subspace(X: list, epsilon: float, centers: list = None, n_centers: int =
             error = 0
         else:
             error = np.abs(new_distortion - old_distortion)/old_distortion
+        print(error)
         errors.append(error)
 
     return centers, errors, distortions
