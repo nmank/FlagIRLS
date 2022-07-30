@@ -254,9 +254,9 @@ def flag_mean(data: list, r: int) -> np.array:
 def eigengene(data: list, r: int) -> np.array:
 
     #mean center
-    n = data[0].shape[0]
+    p = len(data)
     X = np.hstack(data)
-    row_means = np.repeat(np.expand_dims(np.mean(X, axis = 1), axis = 1), n, axis = 1)
+    row_means = np.repeat(np.expand_dims(np.mean(X, axis = 1), axis = 1), p, axis = 1)
     X = X - row_means
 
     #compute eigengene
