@@ -4,13 +4,14 @@ This file contains the FlagIRLS, l2-median and grassmannian gradient descent alg
 by Nathan Mankovich
 '''
 import numpy as np
+from numba import njit
 
 '''
 TO DO:
     -any way to speed up distance matrix calulations using big matrices to batch process shtuff
 '''
 
-
+@njit
 def gr_log(X: np.array,Y: np.array) -> np.array:
     '''
     Log map on the Grassmannian.
@@ -34,7 +35,7 @@ def gr_log(X: np.array,Y: np.array) -> np.array:
     
     return TY
                                              
-
+@njit
 def gr_exp(X: np.array, TY: np.array) -> np.array:
     '''
     Exponential map on the Grassmannian.
@@ -54,7 +55,7 @@ def gr_exp(X: np.array, TY: np.array) -> np.array:
     return Y
 
 
-
+@njit
 def gr_dist(X: np.array, Y: np.array) -> np.array:
     '''
     Geodesic distance on the Grassmannian
@@ -76,7 +77,7 @@ def gr_dist(X: np.array, Y: np.array) -> np.array:
         dist = calc_error_1_2([X], Y, 'geodesic')
     return dist
 
-
+@njit
 def l2_median(data: list, alpha: float, r: int, max_itrs: int, seed: int = 0, init_datapoint: bool = False) -> tuple:
     '''
     Code adopted from Tim Marrinan (translated from matlab into python)
@@ -137,7 +138,7 @@ def l2_median(data: list, alpha: float, r: int, max_itrs: int, seed: int = 0, in
     
     return Y, errs
 
-
+@njit
 def calc_error_1_2(data: list, Y: np.array, sin_cos: str, labels: list = None) -> float:
     '''
     Calculate objective function value. 
@@ -233,7 +234,7 @@ def calc_error_1_2(data: list, Y: np.array, sin_cos: str, labels: list = None) -
             err += zobs
     return err
 
-
+@njit
 def flag_mean(data: list, r: int) -> np.array:
     '''
     Calculate the Flag Mean
@@ -250,7 +251,7 @@ def flag_mean(data: list, r: int) -> np.array:
 
     return mean
 
-
+@njit
 def eigengene(data: list, r: int) -> np.array:
 
     #mean center
@@ -264,6 +265,7 @@ def eigengene(data: list, r: int) -> np.array:
     
     return the_eigengene
 
+@njit
 def zobs_eigengene(data: list, r: int, labels: np.array) -> np.array:
     #IN CONSTRUCTION!
     #need to mean center
@@ -285,8 +287,7 @@ def zobs_eigengene(data: list, r: int, labels: np.array) -> np.array:
 
     return the_zobs_eigengene
 
-
-
+@njit
 def flag_mean_iteration(data: list, Y0: np.array, weight: float, eps: float = .0000001) -> np.array:
     '''
     Calculates a weighted Flag Mean of data using a weight method for FlagIRLS
@@ -330,7 +331,7 @@ def flag_mean_iteration(data: list, Y0: np.array, weight: float, eps: float = .0
 
     return Y
 
-
+@njit
 def irls_flag(data: list, r: int, n_its: int, sin_cos: str, opt_err: str = 'geodesic', init: str = 'random', seed: int = 0) -> tuple: 
     '''
     Use FlagIRLS on data to output a representative for a point in Gr(r,n) 
@@ -396,7 +397,7 @@ def irls_flag(data: list, r: int, n_its: int, sin_cos: str, opt_err: str = 'geod
     else:
         return Y0, err[:-1]
 
-
+@njit
 def calc_gradient(data: list, Y0: np.array, weight: str = 'sine', eps: float = .0000001) -> float:
     '''
     Calculates the gradient of a given Y0 and data given an objective function
@@ -449,7 +450,7 @@ def calc_gradient(data: list, Y0: np.array, weight: str = 'sine', eps: float = .
 
     return grad
 
-
+@njit
 def gradient_descent(data: list, r: int, alpha: float, n_its: int, sin_cos: str, init: str = 'random', seed: int = 0):
     '''
     Runs Grassmannian gradient descent
@@ -497,7 +498,7 @@ def gradient_descent(data: list, r: int, alpha: float, n_its: int, sin_cos: str,
         err.append(calc_error_1_2(data, Y, sin_cos))
     return Y, err
 
-
+@njit
 def distance_matrix(X: list, C: list, similarity: bool = False, labels: list = None) -> np.array:
     '''
     Calculate a chordal distance matrix for the dataset
@@ -529,6 +530,7 @@ def distance_matrix(X: list, C: list, similarity: bool = False, labels: list = N
             
     return Distances
 
+@njit
 def cluster_purity(X: list, centers: list, labels_true: list, similarity: bool = False, feature_labels: list = None) -> float:
     '''
     Calculate the cluster purity of the dataset
@@ -560,6 +562,7 @@ def cluster_purity(X: list, centers: list, labels_true: list, similarity: bool =
     purity = count/len(centers)
     return purity
 
+@njit
 def lbg_subspace(X: list, epsilon: float, centers: list = [], n_centers: int = 17, 
                  opt_type: str = 'sine', n_its: int = 10, seed: int = 1, r: int = 48, 
                  similarity: bool = False, labels: np.array = None) -> tuple:
@@ -658,3 +661,21 @@ def lbg_subspace(X: list, epsilon: float, centers: list = [], n_centers: int = 1
         errors.append(error)
 
     return centers, errors, distortions
+
+@njit
+def find_optimal_dimension(data: list) -> int:
+    n = data[0].shape[0]
+    p = len(data)
+
+    projection_matrix_sum = np.zeros((n,n))
+    for d in data:
+        projection_matrix_sum += d @ d.T
+
+    projection_matrix_average = projection_matrix_sum/p
+
+    evals = np.linalg.eigvalsh(projection_matrix_average)
+    print(evals)
+
+    optimal_dimension = np.sum(evals > 1/2)
+
+    return optimal_dimension
