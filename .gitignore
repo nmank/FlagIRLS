@@ -1,6 +1,14 @@
-*OLD*
-*data*
-*Figures*
-*results*
-*old*
-*CVPR*
+# Ignore everything
+*
+
+# But not these files...
+!.gitignore
+!center_algorithms.py
+
+
+# *OLD*
+# *data*
+# *Figures*
+# *results*
+# *old*
+# *CVPR*
