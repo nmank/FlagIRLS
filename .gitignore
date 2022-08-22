@@ -4,6 +4,9 @@
 # But not these files...
 !.gitignore
 !center_algorithms.py
+!setup.py
+!requirements.txt
+
 
 
 # *OLD*

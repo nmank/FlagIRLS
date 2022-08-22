@@ -1,0 +1,17 @@
+calcom==1.0.2
+calcom.egg==info
+mat73==0.52
+matplotlib==3.5.1
+modules==1.0.0
+numpy==1.23.2
+opencv_python==4.5.4.58
+pandas==1.4.2
+scikit_learn==1.1.2
+scipy==1.9.0
+seaborn==0.11.2
+setuptools==62.3.2
+skimage==0.0
+torch==1.10.1
+torchvision==0.11.2
+torchxrayvision==0.0.37
+tqdm==4.62.3
