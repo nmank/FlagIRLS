@@ -312,14 +312,22 @@ def flag_mean_iteration(data: list, Y0: np.array, weight: float, eps: float = .0
         if weight == 'sine':
             m = np.min([r,x.shape[1]])
             sinsq = m - np.trace(Y0.T @ x @ x.T @ Y0)
-            al.append((max(sinsq,eps))**(-1/4))
+            if sinsq < 0:
+                sinsq = 0
+            al.append((np.sqrt(sinsq)+eps)**(-1/2))
         elif weight == 'cosine':
             cossq = np.trace(Y0.T @ x @ x.T @ Y0)
-            al.append((max(cossq,eps))**(-1/4))
+            if cossq < 0:
+                cossq = 0
+            al.append((np.sqrt(cossq)+eps)**(-1/2))
         elif weight == 'geodesic':
             sinsq = 1 - Y0.T @ x @ x.T @ Y0
             cossq = Y0.T @ x @ x.T @ Y0
-            al.append((max(sinsq*cossq, eps))**(-1/4))
+            if sinsq < 0:
+                sinsq = 0
+            if cossq < 0:
+                cossq = 0
+            al.append((np.sqrt(sinsq)*np.sqrt(cossq)+ eps)**(-1/2))
         else:
             print('sin_cos must be geodesic, sine or cosine')
         aX.append(al[-1]*x)
@@ -330,7 +338,8 @@ def flag_mean_iteration(data: list, Y0: np.array, weight: float, eps: float = .0
     return Y
 
 
-def irls_flag(data: list, r: int, n_its: int, sin_cos: str, opt_err: str = 'geodesic', init: str = 'random', seed: int = 0) -> tuple: 
+def irls_flag(data: list, r: int, n_its: int, sin_cos: str, opt_err: str = 'geodesic', 
+              init: str = 'random', seed: int = 0, stochastic: int = 0, diff_eps: float = 0.0000000001) -> tuple: 
     '''
     Use FlagIRLS on data to output a representative for a point in Gr(r,n) 
     which solves the input objection function
@@ -376,9 +385,13 @@ def irls_flag(data: list, r: int, n_its: int, sin_cos: str, opt_err: str = 'geod
     
     itr = 1
     diff = 1
-    while itr <= n_its and diff > 0.0000000001: #added abs
+    while itr <= n_its and diff > diff_eps: 
         Y0 = Y.copy()
-        Y = flag_mean_iteration(data, Y, sin_cos)
+        if stochastic > 0:
+            idx = np.random.randint(len(data), size=stochastic)
+            Y = flag_mean_iteration([data[i] for i in idx], Y, sin_cos)
+        else:
+            Y = flag_mean_iteration(data, Y, sin_cos)
         err.append(calc_error_1_2(data, Y, opt_err))
         if opt_err == 'cosine':
             diff  = err[itr] - err[itr-1]
