@@ -259,7 +259,7 @@ def eigengene(data: list, r: int) -> np.array:
     X = X - row_means
 
     #compute eigengene
-    the_eigengene = np.linalg.svd(X @ X.T)[0][:,:r]
+    the_eigengene = np.linalg.svd(X )[0][:,:r]
     
     return the_eigengene
 
